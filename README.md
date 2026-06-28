@@ -1,6 +1,6 @@
 # loan_rate_predictor
 
-AWS-managed MLOps project predicting mortgage `rate_spread` (APR − APOR) on Arizona HMDA data (2021–2024). The managed-AWS counterpart to the [`six-eyes`](https://github.com/your-org/six-eyes) OSS project — the contrast is the point.
+AWS-managed MLOps project predicting mortgage `rate_spread` (APR − APOR) on Arizona HMDA data (2021–2024).
 
 ## Stack
 
