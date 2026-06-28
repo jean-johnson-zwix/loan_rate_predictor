@@ -12,3 +12,8 @@ variable "aws_region" {
   type    = string
   default = "us-east-1"
 }
+
+variable "model_package_arn" {
+  type        = string
+  description = "ARN of the approved model package to deploy (from Model Registry)"
+}
