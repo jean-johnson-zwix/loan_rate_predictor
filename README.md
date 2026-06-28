@@ -29,8 +29,18 @@ make tf-init                     # bootstrap Terraform (once)
 make tf-apply                    # apply infra (Feature Group, Model Registry, etc.)
 make run-pipeline DATA_YEAR=2021 # bootstrap training run (AMT → evaluate → register)
 make make-baseline               # create Model Monitor data-quality baseline
+make invoke                      # send sample payload to serverless endpoint
 make test                        # run tests
 ```
+
+## Serving
+
+| Workload | Mode |
+|----------|------|
+| Run-forward vintage scoring | Batch transform |
+| Demo single-quote prediction | Serverless endpoint |
+
+Invoke via AWS CLI (`make invoke`) or Postman with AWS SigV4 auth.
 
 ## Model metrics (2021 champion)
 
