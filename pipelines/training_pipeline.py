@@ -209,7 +209,7 @@ def _build_pipeline(role_arn: str, boto_session,
         inference_instances=[INSTANCE_TYPE],
         transform_instances=[INSTANCE_TYPE],
         model_package_group_name=config.MODEL_PACKAGE_GROUP_NAME,
-        approval_status="Approved",
+        approval_status="PendingManualApproval",
         customer_metadata_properties={
             "trained_on": param_data_year,
             "objective": config.XGBOOST_OBJECTIVE,

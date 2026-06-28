@@ -20,31 +20,8 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from loan_rate_predictor import config
+from loan_rate_predictor.registry import resolve_champion
 from pipelines.training_pipeline import get_pipeline
-
-
-def _resolve_champion_uri(sm_client) -> str:
-    """Find the latest Approved model package and return its artifact S3 URI. Empty string if none."""
-    try:
-        response = sm_client.list_model_packages(
-            ModelPackageGroupName=config.MODEL_PACKAGE_GROUP_NAME,
-            ModelApprovalStatus="Approved",
-            SortBy="CreationTime",
-            SortOrder="Descending",
-            MaxResults=1,
-        )
-        packages = response.get("ModelPackageSummaryList", [])
-        if not packages:
-            return ""
-
-        arn = packages[0]["ModelPackageArn"]
-        desc = sm_client.describe_model_package(ModelPackageName=arn)
-        uri = desc["InferenceSpecification"]["Containers"][0]["ModelDataUrl"]
-        print(f"Champion: {arn}")
-        print(f"  Artifact: {uri}")
-        return uri
-    except sm_client.exceptions.ClientError:
-        return ""
 
 
 def main() -> None:
@@ -77,8 +54,13 @@ def main() -> None:
         pipeline.upsert(role_arn=args.role_arn)
         print(f"Pipeline '{pipeline.name}' upserted.")
 
-    champion_uri = _resolve_champion_uri(sm_client)
-    if not champion_uri:
+    result = resolve_champion(sm_client)
+    if result:
+        champion_arn, champion_uri = result
+        print(f"Champion: {champion_arn}")
+        print(f"  Artifact: {champion_uri}")
+    else:
+        champion_uri = ""
         print("No champion found — bootstrap run.")
 
     execution = pipeline.start(

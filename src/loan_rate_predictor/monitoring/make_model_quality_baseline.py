@@ -16,31 +16,13 @@ from sagemaker.model_monitor import ModelQualityMonitor
 from sagemaker.model_monitor.dataset_format import DatasetFormat
 
 from loan_rate_predictor import config
+from loan_rate_predictor.registry import resolve_champion
 from loan_rate_predictor.training.prepare import load_data_year, split_group_aware, feature_columns
 
 
 def _session():
     boto_session = boto3.Session(profile_name=config.AWS_PROFILE, region_name=config.AWS_REGION)
     return sagemaker.Session(boto_session=boto_session)
-
-
-def _resolve_champion_artifact(sm_client) -> str:
-    """Get the model artifact S3 URI from the latest approved model package."""
-    packages = sm_client.list_model_packages(
-        ModelPackageGroupName=config.MODEL_PACKAGE_GROUP_NAME,
-        ModelApprovalStatus="Approved",
-        SortBy="CreationTime",
-        SortOrder="Descending",
-        MaxResults=1,
-    )
-    if not packages["ModelPackageSummaryList"]:
-        raise RuntimeError("No approved model package found in registry")
-    arn = packages["ModelPackageSummaryList"][0]["ModelPackageArn"]
-    desc = sm_client.describe_model_package(ModelPackageName=arn)
-    uri = desc["InferenceSpecification"]["Containers"][0]["ModelDataUrl"]
-    print(f"Champion model: {arn}")
-    print(f"Artifact: {uri}")
-    return uri
 
 
 def _download_s3(s3_client, uri: str, local_path: Path) -> None:
@@ -150,7 +132,12 @@ def main() -> None:
         print(f"2021 val set: {len(val_df):,} rows")
 
         # 2. Download champion model
-        artifact_uri = _resolve_champion_artifact(sm_client)
+        result = resolve_champion(sm_client)
+        if not result:
+            raise RuntimeError("No approved model package found in registry")
+        champion_arn, artifact_uri = result
+        print(f"Champion: {champion_arn}")
+        print(f"Artifact: {artifact_uri}")
         model_tar = tmp_dir / "model.tar.gz"
         _download_s3(s3_client, artifact_uri, model_tar)
 
