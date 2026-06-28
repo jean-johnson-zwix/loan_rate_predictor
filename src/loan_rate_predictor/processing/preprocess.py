@@ -1,13 +1,21 @@
-"""SageMaker Processing job entrypoint: filter, coerce types, engineer features, write output CSV."""
+"""SageMaker Processing job entrypoint: filter, coerce types, engineer features, write output CSV, ingest to Feature Store."""
+import os
+import sys
+
+_SM_CODE = "/opt/ml/processing/input/source"
+if os.path.isdir(_SM_CODE) and _SM_CODE not in sys.path:
+    sys.path.insert(0, _SM_CODE)
+
 import hashlib
 import json
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
 
 from loan_rate_predictor import config
 from loan_rate_predictor.processing.features import engineer
 
-_SM_INPUT = Path("/opt/ml/processing/input")
+_SM_INPUT = Path("/opt/ml/processing/input/data")
 _SM_OUTPUT = Path("/opt/ml/processing/output")
 
 
@@ -145,8 +153,7 @@ def main() -> None:
 
     Loads raw HMDA CSVs, filters, coerces dtypes, engineers features,
     and writes processed.csv and categorical_encodings.json to the output
-    directory. Runs locally (data/raw → data/processed) or inside a
-    SageMaker Processing job (/opt/ml/processing/input → /opt/ml/processing/output).
+    directory.
     """
     input_dir, output_dir = _dirs()
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -161,7 +168,6 @@ def main() -> None:
     df = sanitize_categoricals(df)
 
     df[config.RECORD_ID] = make_record_id(df)
-    # ponytail: epoch seconds for Feature Store Fractional event_time
     df["event_time"] = (
         pd.to_datetime(df["activity_year"].astype(str) + "-01-01")
         .astype("int64") // 10**9

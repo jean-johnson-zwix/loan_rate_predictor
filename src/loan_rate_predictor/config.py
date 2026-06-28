@@ -175,6 +175,7 @@ MONITORED_SIGNAL = "aggregate"  # set by 00_gate_distribution.ipynb
 
 # AWS / S3
 S3_BUCKET = os.getenv("STORAGE_BUCKET_NAME", "loan-rate-predictor-storage")
+AWS_REGION = os.getenv("AWS_DEFAULT_REGION", "us-east-1")
 AWS_PROFILE = os.getenv("AWS_PROFILE", "loan-rate-predictor-local-developer")
 SAGEMAKER_ROLE_ARN = os.getenv("SAGEMAKER_ROLE_ARN", "")
 S3_RAW_PREFIX = "raw"
