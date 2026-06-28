@@ -181,3 +181,34 @@ SAGEMAKER_ROLE_ARN = os.getenv("SAGEMAKER_ROLE_ARN", "")
 S3_RAW_PREFIX = "raw"
 S3_PROCESSED_PREFIX = "processed"
 FEATURE_GROUP_NAME = "loan-rate-predictor"
+
+S3_TRAINING_PREFIX = "training"
+S3_MODEL_PREFIX = "models"
+S3_BASELINE_PREFIX = "baseline"
+MODEL_PACKAGE_GROUP_NAME = "loan-rate-predictor"
+
+# Percentile fractions — actual clip bounds computed from TRAIN_YEAR data at preprocessing time
+WINSORIZE_LOWER = 0.01
+WINSORIZE_UPPER = 0.99
+
+XGBOOST_OBJECTIVE = "reg:squarederror"
+EVAL_METRIC = "rmse"
+PROMOTION_METRIC = "mae"
+GROUP_SPLIT_KEY = "lei"
+VAL_FRACTION = 0.20
+
+AMT_MAX_JOBS = 20
+AMT_MAX_PARALLEL = 4
+AMT_STRATEGY = "Bayesian"
+
+AMT_HYPERPARAMETER_RANGES = {
+    "num_round": {"min": 50, "max": 500, "type": "Integer"},
+    "max_depth": {"min": 3, "max": 10, "type": "Integer"},
+    "eta": {"min": 0.01, "max": 0.3, "type": "Continuous"},
+    "subsample": {"min": 0.5, "max": 1.0, "type": "Continuous"},
+    "colsample_bytree": {"min": 0.5, "max": 1.0, "type": "Continuous"},
+    "min_child_weight": {"min": 1, "max": 10, "type": "Integer"},
+    "gamma": {"min": 0.0, "max": 5.0, "type": "Continuous"},
+    "alpha": {"min": 0.0, "max": 5.0, "type": "Continuous"},
+    "lambda": {"min": 0.0, "max": 5.0, "type": "Continuous"},
+}
