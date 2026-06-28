@@ -9,3 +9,4 @@ docs/
 *.tfstate.backup
 *.tfvars
 CLAUDE.md
+.claude

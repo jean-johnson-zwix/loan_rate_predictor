@@ -34,7 +34,7 @@ def load_xgb_model(model_tar_path: Path, work_dir: Path):
     """Extract and load an XGBoost model from a SageMaker model.tar.gz."""
     import xgboost as xgb
     extract_dir = work_dir / "model"
-    extract_dir.mkdir(exist_ok=True)
+    extract_dir.mkdir(parents=True, exist_ok=True)
     with tarfile.open(model_tar_path) as tar:
         tar.extractall(extract_dir)
     model = xgb.Booster()
