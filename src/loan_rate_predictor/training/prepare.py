@@ -52,7 +52,7 @@ def write_xgb_csv(df: pd.DataFrame, path: Path) -> None:
 def prepare(input_dir: Path, output_dir: Path, data_year: int) -> dict:
     """Full prepare step: load data_year, split, assert, write."""
     df = load_data_year(input_dir, data_year)
-    print(f"Vintage {data_year}: {len(df):,} rows")
+    print(f"Year {data_year}: {len(df):,} rows")
 
     assert_features_numeric(df)
 

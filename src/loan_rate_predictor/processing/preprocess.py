@@ -32,7 +32,7 @@ def _dirs() -> tuple[Path, Path]:
 
 
 def load_raw(input_dir: Path) -> pd.DataFrame:
-    """Load all HMDA vintage CSVs into one DataFrame with string dtypes.
+    """Load all HMDA year CSVs into one DataFrame with string dtypes.
 
     All columns are read as strings to preserve sentinel values for
     downstream coercion steps.
@@ -41,7 +41,7 @@ def load_raw(input_dir: Path) -> pd.DataFrame:
         input_dir: Directory containing {year}.csv for each year in config.YEARS.
 
     Returns:
-        Concatenated DataFrame across all vintages with original string dtypes.
+        Concatenated DataFrame across all years with original string dtypes.
     """
     frames = []
     for year in config.YEARS:
