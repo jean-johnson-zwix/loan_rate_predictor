@@ -3,3 +3,9 @@ __pycache__/
 *.pyc
 .env
 docs/
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.tfvars
+CLAUDE.md
