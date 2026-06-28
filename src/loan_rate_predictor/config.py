@@ -204,6 +204,10 @@ ENDPOINT_NAME = "loan-rate-predictor-demo"
 SERVERLESS_MEMORY_MB = 2048
 SERVERLESS_MAX_CONCURRENCY = 1
 
+S3_PREDICTIONS_PREFIX = "predictions"
+SNS_TOPIC_NAME = "loan-rate-predictor-alerts"
+MODEL_QUALITY_DEGRADATION_THRESHOLD = PERF_MATERIAL_RELATIVE  # MAE violation if year > baseline × (1 + this)
+
 AMT_HYPERPARAMETER_RANGES = {
     "num_round": {"min": 50, "max": 500, "type": "Integer"},
     "max_depth": {"min": 3, "max": 10, "type": "Integer"},

@@ -85,7 +85,7 @@ def _override_error_thresholds(s3_client, output_uri: str,
     }
     found = set()
 
-    reg = constraints.get("regression_metrics", {})
+    reg = constraints.get("regression_constraints", constraints.get("regression_metrics", {}))
 
     # Shape 1: list of dicts with "name" key
     if isinstance(reg, list):
