@@ -17,3 +17,8 @@ variable "model_package_arn" {
   type        = string
   description = "ARN of the approved model package to deploy (from Model Registry)"
 }
+
+variable "alert_email" {
+  type        = string
+  description = "Email address for monitoring alert notifications"
+}
