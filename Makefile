@@ -3,7 +3,7 @@ export
 
 PYTHONPATH := src
 
-.PHONY: data upload-raw preprocess tf-init tf-plan tf-apply run-job test
+.PHONY: data upload-raw preprocess tf-init tf-plan tf-apply run-preprocessing run-pipeline make-baseline test
 
 data:
 	python scripts/download_hmda.py
@@ -25,6 +25,14 @@ tf-apply:
 
 run-preprocessing:
 	python scripts/run_processing_job.py
+
+# requires: make tf-apply (Model Package Group must exist before pipeline registers a model)
+run-pipeline:
+	@echo "Usage: make run-pipeline DATA_YEAR=2021"
+	python scripts/run_pipeline.py --data-year $(DATA_YEAR)
+
+make-baseline:
+	PYTHONPATH=src python -m loan_rate_predictor.monitoring.make_baseline
 
 test:
 	pytest tests/
