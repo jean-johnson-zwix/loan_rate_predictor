@@ -6,7 +6,7 @@ locals {
     "state_code", "county_code", "census_tract", "derived_msa_md",
     # disparity dimensions (string)
     "derived_race", "derived_ethnicity", "derived_sex",
-    # vintage
+    # year
     "activity_year",
   ]
 
