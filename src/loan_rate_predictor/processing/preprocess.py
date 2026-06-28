@@ -173,6 +173,12 @@ def main() -> None:
         .astype("int64") // 10**9
     ).astype(float)
 
+    train_mask = df["activity_year"].astype(str) == str(config.TRAIN_YEAR)
+    lo = float(df.loc[train_mask, config.TARGET].quantile(config.WINSORIZE_LOWER))
+    hi = float(df.loc[train_mask, config.TARGET].quantile(config.WINSORIZE_UPPER))
+    df[config.TARGET] = df[config.TARGET].clip(lower=lo, upper=hi)
+    print(f"Winsorized {config.TARGET} to [{lo:.4f}, {hi:.4f}] (from {config.TRAIN_YEAR} {config.WINSORIZE_LOWER}/{config.WINSORIZE_UPPER} percentiles)")
+
     df, encodings = engineer(df)
 
     keep = (
@@ -181,7 +187,7 @@ def main() -> None:
         + config.CATEGORICAL_FEATURES
         + list(config.GEO_KEYS)
         + config.DISPARITY_DIMENSIONS
-        + ["activity_year"]
+        + ["activity_year", "lei"]
     )
     keep = [c for c in keep if c in df.columns]
     out = _fs_safe_columns(df[keep].copy())
@@ -189,6 +195,9 @@ def main() -> None:
     out.to_csv(output_dir / "processed.csv", index=False)
     with open(output_dir / "categorical_encodings.json", "w") as f:
         json.dump(encodings, f, indent=2)
+    with open(output_dir / "winsorize_bounds.json", "w") as f:
+        json.dump({"target": config.TARGET, "lower": lo, "upper": hi,
+                    "train_year": config.TRAIN_YEAR}, f, indent=2)
 
     print(f"Wrote {len(out):,} rows → {output_dir}/processed.csv")
     print(f"Wrote categorical encodings → {output_dir}/categorical_encodings.json")
