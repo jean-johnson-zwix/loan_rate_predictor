@@ -3,7 +3,7 @@ export
 
 PYTHONPATH := src
 
-.PHONY: data upload-raw preprocess tf-init tf-plan tf-apply run-preprocessing run-pipeline make-baseline test
+.PHONY: data upload-raw preprocess tf-init tf-plan tf-apply run-preprocessing run-pipeline make-baseline test deploy invoke
 
 data:
 	python scripts/download_hmda.py
@@ -36,3 +36,16 @@ make-baseline:
 
 test:
 	pytest tests/
+
+# requires: model_package_arn set in infra/terraform.auto.tfvars
+deploy:
+	terraform -chdir=infra apply
+
+# requires: endpoint deployed via make deploy
+invoke:
+	aws sagemaker-runtime invoke-endpoint \
+		--endpoint-name loan-rate-predictor-demo \
+		--content-type text/csv \
+		--body "$$(cat data/sample_payload.csv)" \
+		--profile $(AWS_PROFILE) \
+		/tmp/sagemaker_output.json && cat /tmp/sagemaker_output.json
