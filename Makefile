@@ -3,7 +3,7 @@ export
 
 PYTHONPATH := src
 
-.PHONY: data upload-raw preprocess tf-init tf-plan tf-apply run-preprocessing run-pipeline make-baseline test invoke
+.PHONY: data upload-raw preprocess tf-init tf-plan tf-apply run-preprocessing run-pipeline make-baseline make-model-quality-baseline predict monitor test invoke
 
 data:
 	python scripts/download_hmda.py
@@ -33,6 +33,17 @@ run-pipeline:
 
 make-baseline:
 	python -m loan_rate_predictor.monitoring.make_baseline
+
+make-model-quality-baseline:
+	python -m loan_rate_predictor.monitoring.make_model_quality_baseline
+
+predict:
+	@echo "Usage: make predict YEAR=2022"
+	python scripts/predict_with_champion.py --year $(YEAR)
+
+monitor:
+	@echo "Usage: make monitor YEAR=2022"
+	python scripts/run_monitoring.py --year $(YEAR)
 
 test:
 	pytest tests/
