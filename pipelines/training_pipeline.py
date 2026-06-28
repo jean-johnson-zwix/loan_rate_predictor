@@ -19,7 +19,7 @@ from sagemaker.workflow.parameters import ParameterString
 from sagemaker.workflow.pipeline import Pipeline
 from sagemaker.workflow.properties import PropertyFile
 from sagemaker.workflow.step_collections import RegisterModel
-from sagemaker.workflow.steps import ProcessingStep, TuningStep
+from sagemaker.workflow.steps import ProcessingStep, TuningStep, CacheConfig
 
 from loan_rate_predictor import config
 
@@ -125,9 +125,12 @@ def _build_pipeline(role_arn: str, boto_session,
         },
     )
 
+    _cache = CacheConfig(enable_caching=True, expire_after="PT24H")
+
     step_tuning = TuningStep(
         name="TrainAMT",
         step_args=tuner_args,
+        cache_config=_cache,
     )
 
     # [3] Evaluate: score challenger (and champion if present) on val

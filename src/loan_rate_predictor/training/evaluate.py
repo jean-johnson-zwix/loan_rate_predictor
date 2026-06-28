@@ -8,6 +8,7 @@ Bootstrap case (no champion): compare challenger against dumb baselines only.
 import json
 import tarfile
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -74,7 +75,7 @@ def best_linear_baseline_metrics(X_val: np.ndarray, y_val: np.ndarray,
 
 
 def evaluate(val_path: Path, train_path: Path, challenger_tar: Path,
-             champion_tar: Path | None, work_dir: Path) -> dict:
+             champion_tar: Optional[Path], work_dir: Path) -> dict:
     """Full evaluation. Returns dict with 'promote' boolean for the ConditionStep."""
     X_val, y_val = load_val(val_path)
     X_train, y_train = load_val(train_path)
