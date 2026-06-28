@@ -1,4 +1,5 @@
 """Tests for the preprocessing pipeline (filters, coercion, record IDs, column sanitisation)."""
+import json
 import sys
 from pathlib import Path
 
@@ -8,6 +9,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from loan_rate_predictor import config
+from loan_rate_predictor.processing import preprocess as preprocess_module
 from loan_rate_predictor.processing.preprocess import (
     apply_filters,
     coerce_numerics,
@@ -109,3 +111,40 @@ def test_fs_safe_columns_replaces_hyphens():
     assert "derived_msa_md" in result.columns
     assert "open_end_line_of_credit" in result.columns
     assert "derived_msa-md" not in result.columns
+
+
+def test_main_writes_processed_csv_and_artifacts(tmp_path, monkeypatch):
+    raw_dir = tmp_path / "raw"
+    output_dir = tmp_path / "processed"
+    raw_dir.mkdir()
+    pd.DataFrame(
+        [
+            _raw_row(
+                loan_type="1",
+                debt_to_income_ratio="<20%",
+                property_value="300000",
+            )
+        ]
+    ).to_csv(raw_dir / "2021.csv", index=False)
+
+    monkeypatch.setattr(preprocess_module.config, "YEARS", [2021])
+    monkeypatch.setattr(preprocess_module, "_dirs", lambda: (raw_dir, output_dir))
+
+    preprocess_module.main()
+
+    processed = pd.read_csv(output_dir / "processed.csv")
+    encodings = json.loads((output_dir / "categorical_encodings.json").read_text())
+    bounds = json.loads((output_dir / "winsorize_bounds.json").read_text())
+
+    assert len(processed) == 1
+    assert len(processed[config.RECORD_ID].iloc[0]) == 16
+    assert processed["event_time"].iloc[0] == pd.Timestamp("2021-01-01").timestamp()
+    assert processed["loan_type"].iloc[0] == 0
+    assert processed["debt_to_income_ratio"].iloc[0] == 0
+    assert encodings["loan_type"] == {"1": 0}
+    assert bounds == {
+        "target": config.TARGET,
+        "lower": 1.5,
+        "upper": 1.5,
+        "train_year": config.TRAIN_YEAR,
+    }
