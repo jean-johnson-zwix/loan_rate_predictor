@@ -41,10 +41,6 @@ resource "aws_sagemaker_feature_group" "loan_rate_predictor" {
   event_time_feature_name        = "event_time"
   role_arn                       = var.sagemaker_role_arn
 
-  online_store_config {
-    enable_online_store = true
-  }
-
   offline_store_config {
     s3_storage_config {
       s3_uri = "s3://${var.s3_bucket}/feature-store"
