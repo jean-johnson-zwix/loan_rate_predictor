@@ -200,6 +200,10 @@ AMT_MAX_JOBS = 20
 AMT_MAX_PARALLEL = 4
 AMT_STRATEGY = "Bayesian"
 
+ENDPOINT_NAME = "loan-rate-predictor-demo"
+SERVERLESS_MEMORY_MB = 2048
+SERVERLESS_MAX_CONCURRENCY = 1
+
 AMT_HYPERPARAMETER_RANGES = {
     "num_round": {"min": 50, "max": 500, "type": "Integer"},
     "max_depth": {"min": 3, "max": 10, "type": "Integer"},
