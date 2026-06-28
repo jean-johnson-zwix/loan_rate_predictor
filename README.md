@@ -7,7 +7,7 @@ AWS-managed MLOps project predicting mortgage `rate_spread` (APR − APOR) on Ar
 | Layer | Choice |
 |---|---|
 | Model | SageMaker built-in XGBoost |
-| Tuning | SageMaker AMT (Bayesian/Hyperband) |
+| Tuning | SageMaker AMT (Bayesian) |
 | Registry | SageMaker Model Registry |
 | Infra | Terraform |
 | CI/CD | GitHub Actions → SageMaker |
@@ -22,12 +22,22 @@ AWS-managed MLOps project predicting mortgage `rate_spread` (APR − APOR) on Ar
 ## Quick start
 
 ```bash
-make data              # download AZ HMDA CSVs → data/raw/
-make upload-raw        # sync data/raw/ → S3
-make preprocess        # preprocess locally → data/processed/
-make run-preprocessing # submit Processing job to SageMaker
-make tf-init           # bootstrap Terraform (once)
-make tf-plan           # preview infra changes
-make tf-apply          # apply infra (Feature Group, etc.)
-make test              # run tests
+make data                        # download AZ HMDA CSVs → data/raw/
+make upload-raw                  # sync data/raw/ → S3
+make run-preprocessing           # submit Processing job to SageMaker
+make tf-init                     # bootstrap Terraform (once)
+make tf-apply                    # apply infra (Feature Group, Model Registry, etc.)
+make run-pipeline DATA_YEAR=2021 # bootstrap training run (AMT → evaluate → register)
+make make-baseline               # create Model Monitor data-quality baseline
+make test                        # run tests
 ```
+
+## Model metrics (2021 champion)
+
+| | RMSE | MAE |
+|---|---|---|
+| XGBoost (28 features, Bayesian AMT) | 0.339 | 0.248 |
+| Mean predictor baseline | 0.537 | 0.389 |
+| Best single-feature linear | 0.519 | 0.376 |
+
+−36% MAE vs mean baseline · −34% MAE vs best linear · val set group-split on lender (`lei`)
