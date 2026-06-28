@@ -1,8 +1,7 @@
 """Create Model Monitor data-quality baseline from 2021 training features.
 
 This is the managed AWS data-quality baseline (per-feature statistics and
-constraints). It is NOT the hand-rolled PSI drift detection from the gate —
-those are complementary signals, not duplicates.
+constraints).
 """
 import argparse
 import tempfile

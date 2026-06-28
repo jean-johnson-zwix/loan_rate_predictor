@@ -32,7 +32,7 @@ run-pipeline:
 	python scripts/run_pipeline.py --data-year $(DATA_YEAR)
 
 make-baseline:
-	PYTHONPATH=src python -m loan_rate_predictor.monitoring.make_baseline
+	python -m loan_rate_predictor.monitoring.make_baseline
 
 test:
 	pytest tests/

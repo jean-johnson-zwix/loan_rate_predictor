@@ -7,7 +7,6 @@ NUMERIC_FEATURES = [
     "loan_amount",
     "loan_to_value_ratio",
     "loan_term",
-    "intro_rate_period",
     "property_value",
     "income",
     "total_units",
