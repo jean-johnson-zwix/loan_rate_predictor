@@ -1,0 +1,314 @@
+{
+  "generated_at": "2026-06-29 11:18 UTC",
+  "models": [
+    {
+      "version": 1,
+      "status": "Approved",
+      "created": 1782730778,
+      "trained_on": "2021",
+      "objective": "reg:squarederror",
+      "group_split_key": "lei",
+      "challenger_mae": 0.248,
+      "challenger_rmse": 0.339,
+      "train_rows": 668318,
+      "val_rows": 167080,
+      "num_features": 28
+    }
+  ],
+  "baseline": {
+    "mae": 0.247504705321021,
+    "rmse": 0.33924611214447203,
+    "r2": 0.5999613174061492,
+    "mae_threshold": 0.3093808817261588,
+    "rmse_threshold": 0.4240576402338774,
+    "r2_threshold": 0.5999613174061492,
+    "item_count": 102569
+  },
+  "monitoring": {
+    "2021": {
+      "year": 2021,
+      "champion_version": 2,
+      "dq_violations": [],
+      "mq_violations": [],
+      "rmse": 0.3091425756518337,
+      "mae": 0.22516223267450655,
+      "r2": 0.6617524696999231
+    },
+    "2022": {
+      "year": 2022,
+      "champion_version": 1,
+      "dq_violations": [
+        {
+          "feature": "loan_amount",
+          "check": "drift",
+          "description": "Drift score is 0.31. The drift detection method is Wasserstein distance (normed). The drift threshold is 0.10."
+        },
+        {
+          "feature": "loan_to_value_ratio",
+          "check": "drift",
+          "description": "Drift score is 0.18. The drift detection method is Wasserstein distance (normed). The drift threshold is 0.10."
+        },
+        {
+          "feature": "loan_term",
+          "check": "drift",
+          "description": "Drift score is 0.20. The drift detection method is Wasserstein distance (normed). The drift threshold is 0.10."
+        },
+        {
+          "feature": "property_value",
+          "check": "drift",
+          "description": "Drift score is 0.19. The drift detection method is Wasserstein distance (normed). The drift threshold is 0.10."
+        },
+        {
+          "feature": "tract_population",
+          "check": "drift",
+          "description": "Drift score is 0.21. The drift detection method is Wasserstein distance (normed). The drift threshold is 0.10."
+        },
+        {
+          "feature": "tract_to_msa_income_percentage",
+          "check": "drift",
+          "description": "Drift score is 0.15. The drift detection method is Wasserstein distance (normed). The drift threshold is 0.10."
+        },
+        {
+          "feature": "tract_owner_occupied_units",
+          "check": "drift",
+          "description": "Drift score is 0.15. The drift detection method is Wasserstein distance (normed). The drift threshold is 0.10."
+        },
+        {
+          "feature": "tract_one_to_four_family_homes",
+          "check": "drift",
+          "description": "Drift score is 0.30. The drift detection method is Wasserstein distance (normed). The drift threshold is 0.10."
+        },
+        {
+          "feature": "tract_median_age_of_housing_units",
+          "check": "drift",
+          "description": "Drift score is 0.29. The drift detection method is Wasserstein distance (normed). The drift threshold is 0.10."
+        },
+        {
+          "feature": "debt_to_income_ratio",
+          "check": "drift",
+          "description": "Drift score is 0.42. The drift detection method is Wasserstein distance (normed). The drift threshold is 0.10."
+        },
+        {
+          "feature": "ffiec_msa_md_median_family_income",
+          "check": "drift",
+          "description": "Drift score is 0.83. The drift detection method is Jensen-Shannon distance. The drift threshold is 0.10."
+        },
+        {
+          "feature": "loan_purpose",
+          "check": "drift",
+          "description": "Drift score is 0.26. The drift detection method is Jensen-Shannon distance. The drift threshold is 0.10."
+        },
+        {
+          "feature": "prepayment_penalty_term",
+          "check": "drift",
+          "description": "Drift score is 0.12. The drift detection method is Jensen-Shannon distance. The drift threshold is 0.10."
+        }
+      ],
+      "mq_violations": [
+        {
+          "metric": "mae"
+        }
+      ],
+      "rmse": 0.6716941109863097,
+      "mae": 0.517328710056362,
+      "r2": 0.08809529543764949
+    },
+    "2023": {
+      "year": 2023,
+      "champion_version": 3,
+      "dq_violations": [
+        {
+          "feature": "loan_to_value_ratio",
+          "check": "drift",
+          "description": "Drift score is 0.29. The drift detection method is Wasserstein distance (normed). The drift threshold is 0.10."
+        },
+        {
+          "feature": "loan_term",
+          "check": "drift",
+          "description": "Drift score is 0.15. The drift detection method is Wasserstein distance (normed). The drift threshold is 0.10."
+        },
+        {
+          "feature": "debt_to_income_ratio",
+          "check": "drift",
+          "description": "Drift score is 0.24. The drift detection method is Wasserstein distance (normed). The drift threshold is 0.10."
+        },
+        {
+          "feature": "ffiec_msa_md_median_family_income",
+          "check": "drift",
+          "description": "Drift score is 0.82. The drift detection method is Jensen-Shannon distance. The drift threshold is 0.10."
+        },
+        {
+          "feature": "loan_purpose",
+          "check": "drift",
+          "description": "Drift score is 0.20. The drift detection method is Jensen-Shannon distance. The drift threshold is 0.10."
+        }
+      ],
+      "mq_violations": [
+        {
+          "metric": "mae"
+        }
+      ],
+      "rmse": 0.7317059481511241,
+      "mae": 0.5567161987424677,
+      "r2": 0.21628426331984152
+    }
+  },
+  "drift": {
+    "2022": [
+      {
+        "feature": "ffiec_msa_md_median_family_income",
+        "distance": 0.8320725641875536
+      },
+      {
+        "feature": "debt_to_income_ratio",
+        "distance": 0.4151159584725494
+      },
+      {
+        "feature": "loan_amount",
+        "distance": 0.3105323195720955
+      },
+      {
+        "feature": "tract_one_to_four_family_homes",
+        "distance": 0.3049839341690262
+      },
+      {
+        "feature": "tract_median_age_of_housing_units",
+        "distance": 0.28892032237767024
+      },
+      {
+        "feature": "loan_purpose",
+        "distance": 0.262021436512353
+      },
+      {
+        "feature": "tract_population",
+        "distance": 0.20750236176073528
+      },
+      {
+        "feature": "loan_term",
+        "distance": 0.19801752004659035
+      },
+      {
+        "feature": "property_value",
+        "distance": 0.1888466435719489
+      },
+      {
+        "feature": "loan_to_value_ratio",
+        "distance": 0.18477191196537482
+      },
+      {
+        "feature": "tract_to_msa_income_percentage",
+        "distance": 0.15286702699007942
+      },
+      {
+        "feature": "tract_owner_occupied_units",
+        "distance": 0.15113437126006943
+      },
+      {
+        "feature": "prepayment_penalty_term",
+        "distance": 0.12400857295567252
+      }
+    ],
+    "2023": [
+      {
+        "feature": "ffiec_msa_md_median_family_income",
+        "distance": 0.8176893054162457
+      },
+      {
+        "feature": "loan_to_value_ratio",
+        "distance": 0.28640552227351995
+      },
+      {
+        "feature": "debt_to_income_ratio",
+        "distance": 0.23984100226039262
+      },
+      {
+        "feature": "loan_purpose",
+        "distance": 0.19940533625815907
+      },
+      {
+        "feature": "loan_term",
+        "distance": 0.14559970466331898
+      }
+    ]
+  },
+  "feature_means": {
+    "2021": {
+      "rate_spread": 0.33411437530356985,
+      "loan_amount": 298484.29664819216,
+      "loan_to_value_ratio": 70.09309804753953,
+      "loan_term": 333.6000918431778,
+      "property_value": 448131.9270732541,
+      "income": 114.75760021321696,
+      "total_units": 1.0069285230702147,
+      "tract_population": 5358.656775333631,
+      "ffiec_msa_md_median_family_income": 74968.53729904644,
+      "tract_to_msa_income_percentage": 118.5758029077125,
+      "tract_owner_occupied_units": 1349.0515795150723,
+      "tract_one_to_four_family_homes": 2055.3351257071386,
+      "tract_median_age_of_housing_units": 22.0075986551459,
+      "loan_type": 0.32679266067678747,
+      "loan_purpose": 1.6501336821692083,
+      "lien_status": 0.0,
+      "occupancy_type": 0.1160200580628134,
+      "construction_method": 0.027989489024292286,
+      "conforming_loan_limit": 0.042603876209163824,
+      "debt_to_income_ratio": 5.310691131077375,
+      "manufactured_home_secured_property_type": 1.9487509610198859,
+      "manufactured_home_land_property_interest": 3.8955741448357375,
+      "derived_loan_product_type": 0.43578092189059864,
+      "derived_dwelling_category": 1.9720105109757078,
+      "negative_amortization": 1.0,
+      "interest_only_payment": 0.9941799488221051,
+      "balloon_payment": 0.99965804904357,
+      "other_nonamortizing_features": 0.9994974009432338,
+      "prepayment_penalty_term": 5.343394494360104
+    },
+    "2022": {
+      "rate_spread": 0.4317630561623311,
+      "loan_amount": 360828.874881565,
+      "loan_to_value_ratio": 73.46256843145655,
+      "loan_term": 345.71300583282266,
+      "property_value": 511345.0148919903,
+      "income": 125.67520437859073,
+      "total_units": 1.0051118537136114,
+      "tract_population": 4884.145401317394,
+      "ffiec_msa_md_median_family_income": 83725.15077415365,
+      "tract_to_msa_income_percentage": 112.58834173961581,
+      "tract_owner_occupied_units": 1252.4804802078784,
+      "tract_one_to_four_family_homes": 1753.7236875698554,
+      "tract_median_age_of_housing_units": 25.864340139682394,
+      "loan_type": 0.3678605672398827,
+      "loan_purpose": 1.1745519326891982,
+      "lien_status": 0.0,
+      "occupancy_type": 0.08211305082918692,
+      "construction_method": 0.04631305423330705,
+      "conforming_loan_limit": 0.05281492366260631,
+      "debt_to_income_ratio": 7.120965408466047,
+      "manufactured_home_secured_property_type": 1.9143580113130259,
+      "manufactured_home_land_property_interest": 3.826650856419887,
+      "derived_loan_product_type": 0.47745621450495584,
+      "derived_dwelling_category": 1.953686945766693,
+      "negative_amortization": 1.0,
+      "interest_only_payment": 0.9881139472474852,
+      "balloon_payment": 0.9992794612412557,
+      "other_nonamortizing_features": 0.9986837402202465,
+      "prepayment_penalty_term": 5.488650096166394
+    }
+  },
+  "recoveries": {},
+  "report_links": {
+    "2021": {
+      "data_quality": "reports/2021_data_quality.html",
+      "model_quality": "reports/2021_model_quality.html"
+    },
+    "2022": {
+      "data_quality": "reports/2022_data_quality.html",
+      "model_quality": "reports/2022_model_quality.html"
+    },
+    "2023": {
+      "data_quality": "reports/2023_data_quality.html",
+      "model_quality": "reports/2023_model_quality.html"
+    }
+  },
+  "drift_threshold": 0.1
+}
