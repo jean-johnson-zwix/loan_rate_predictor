@@ -93,7 +93,7 @@ invoke:
 test:
 	pytest tests/
 
-## Generate ops-dashboard/ops-data.json from Registry + S3 artifacts
+## Generate ui/ops-dashboard/ops-data.json from Registry + S3 artifacts
 ops-report:
 	python scripts/generate_ops_report.py
 

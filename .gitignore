@@ -11,5 +11,5 @@ docs/
 CLAUDE.md
 .claude
 dist/
-ops-dashboard/ops-data.json
-ops-dashboard/reports/
+ui/ops-dashboard/ops-data.json
+ui/ops-dashboard/reports/

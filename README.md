@@ -58,10 +58,10 @@ The pipeline trains a challenger on the new year (with per-vintage winsorize bou
 ## Ops Dashboard
 
 ```bash
-make ops-report                  # generate ops-dashboard/ops-data.json from AWS artifacts
+make ops-report                  # generate ui/ops-dashboard/ops-data.json from AWS artifacts
 ```
 
-Static dashboard (`ops-dashboard/ops.html`) reads from a generated JSON file. Four zones: status, champion timeline, accuracy over time, per-vintage drill-down. Deployed to GitHub Pages.
+Static dashboard (`ui/ops-dashboard/ops.html`) reads from a generated JSON file. Four zones: status, champion timeline, accuracy over time, per-vintage drill-down. Deployed to GitHub Pages.
 
 ## Model metrics (2021 champion)
 

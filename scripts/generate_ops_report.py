@@ -21,7 +21,7 @@ import boto3
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from loan_rate_predictor import config
 
-OUTPUT = Path(__file__).resolve().parent.parent / "ops-dashboard" / "ops-data.json"
+OUTPUT = Path(__file__).resolve().parent.parent / "ui/ops-dashboard" / "ops-data.json"
 DRIFT_THRESHOLD = 0.1
 
 
