@@ -467,7 +467,8 @@ async function init() {
     if (!resp.ok) throw new Error(`Failed to load data: ${resp.status}`);
     _data = await resp.json();
 
-    document.getElementById("generated-at").textContent = _data.generated_at || "";
+    const genAt = document.getElementById("generated-at");
+    if (genAt) genAt.textContent = _data.generated_at || "";
 
     renderStatus(root, _data);
     renderTimeline(root, _data);
