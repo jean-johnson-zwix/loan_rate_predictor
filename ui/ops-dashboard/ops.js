@@ -85,8 +85,7 @@ function renderStatus(root, data) {
     el("span", { className: `status-label ${statusCls}-text` }, statusLabel)));
   const detail = `Champion v${champion.version} (trained on HMDA ${champion.trained_on})`;
   const monDetail = latestMon
-    ? ` \u00b7 Last monitored: ${latestYear} (MAE ${fmt(latestMon.mae)})`
-    : "";
+    ? "" : "";
   info.appendChild(el("div", { className: "status-detail" }, detail + monDetail));
   section.appendChild(info);
 
@@ -147,16 +146,14 @@ function renderAccuracy(root, data) {
     const mon = data.monitoring[year];
     if (mon.mae == null) return;
     const r = recoveries[year];
-    const frozenVersion = r && r.frozen_champion_arn ? r.frozen_champion_arn.split("/").pop() : null;
-    const newVersion = r && r.new_champion_arn ? r.new_champion_arn.split("/").pop() : null;
     points.push({
       year,
       monitoring_mae: mon.mae,
       before_mae: r ? r.frozen_eval_mae : mon.mae,
       after_mae: r ? r.new_eval_mae : null,
       retrained: !!r,
-      before_version: frozenVersion || mon.champion_version,
-      new_version: newVersion,
+      before_version: r ? r.frozen_version : mon.champion_version,
+      new_version: r ? r.new_version : null,
       recovery_magnitude: r ? r.recovery_magnitude : null,
     });
   });
@@ -170,10 +167,10 @@ function renderAccuracy(root, data) {
   const legend = el("div", { className: "chart-legend" });
   legend.appendChild(el("div", { className: "legend-item" },
     el("div", { className: "legend-swatch", style: { background: "rgba(240,111,170,0.35)" } }),
-    "Before retrain"));
+    "Frozen champion (eval slice)"));
   legend.appendChild(el("div", { className: "legend-item" },
     el("div", { className: "legend-swatch", style: { background: "rgba(245,230,66,0.35)" } }),
-    "After retrain"));
+    "Retrained (eval slice)"));
   content.appendChild(legend);
 
   points.forEach(p => {
@@ -196,7 +193,7 @@ function renderAccuracy(root, data) {
 
     if (p.retrained) {
       const afterPct = Math.min(p.after_mae / maxMae * 100, 100);
-      const afterCls = threshold && p.after_mae > threshold ? "pink" : "accent";
+      const afterCls = "accent";
 
       const afterRow = el("div", { className: "chart-bar-row" });
       afterRow.appendChild(el("span", { className: "chart-version dim" }, p.new_version ? `v${p.new_version}` : ""));
@@ -220,12 +217,12 @@ function renderAccuracy(root, data) {
     content.appendChild(group);
   });
 
-  if (threshold) {
-    content.appendChild(el("div", { className: "drift-legend dim" },
-      `Dashed line = ${fmt(threshold)} MAE alarm threshold (baseline x 1.25).`));
-  }
+  const notes = [];
+  if (threshold) notes.push(`Dashed line = ${fmt(threshold)} MAE alarm threshold (baseline x 1.25).`);
+  notes.push("Recovery measured on held-out eval slice (rows the retrained model never trained on). Monitoring table shows full-year MAE on all rows.");
+  content.appendChild(el("div", { className: "drift-legend dim" }, notes.join(" ")));
 
-  root.appendChild(card("Accuracy Over Time", content));
+  root.appendChild(card("Accuracy Over Time (eval slice)", content));
 }
 
 // Zone 4: Per-vintage detail - drill down
@@ -239,7 +236,7 @@ function renderVintages(root, data) {
     el("th", null, "Model"),
     el("th", null, "Data Drift (A)"),
     el("th", null, "Model Quality (B)"),
-    el("th", null, "MAE"),
+    el("th", null, "MAE (full year)"),
     el("th", null, "Status")));
 
   monYears.forEach(year => {

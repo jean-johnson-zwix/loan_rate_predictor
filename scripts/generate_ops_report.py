@@ -87,8 +87,10 @@ def _get_model_packages_from_mlflow():
             except Exception:
                 pass
 
+        sm_arn = tags.get("sagemaker_arn")
         packages.append({
             "version": int(mv.version),
+            "_sagemaker_arn": sm_arn,  # internal, stripped before JSON output
             "status": "Approved" if is_champion else "Rejected",
             "created": mv.creation_timestamp // 1000 if mv.creation_timestamp else None,
             "trained_on": tags.get("data_year") or run_params.get("data_year"),
@@ -323,6 +325,32 @@ def main():
     recoveries = _get_recoveries(s3)
     print(f"  {len(recoveries)} recovery files")
 
+    # Build SageMaker -> MLflow version lookup
+    sm_to_mlflow = {}
+    for m in packages:
+        arn = m.get("_sagemaker_arn")
+        if arn:
+            sm_version = arn.split("/")[-1]
+            sm_to_mlflow[int(sm_version)] = m["version"]
+            sm_to_mlflow[arn] = m["version"]
+
+    # Translate monitoring champion_version from SageMaker to MLflow
+    for year, m in monitoring.items():
+        sm_ver = m.get("champion_version")
+        if sm_ver and sm_ver in sm_to_mlflow:
+            m["champion_version"] = sm_to_mlflow[sm_ver]
+
+    # Translate recovery ARNs to MLflow versions
+    for year, r in recoveries.items():
+        frozen_arn = r.get("frozen_champion_arn", "")
+        new_arn = r.get("new_champion_arn", "")
+        if frozen_arn in sm_to_mlflow:
+            r["frozen_version"] = sm_to_mlflow[frozen_arn]
+        elif year in monitoring and monitoring[year].get("champion_version"):
+            r["frozen_version"] = monitoring[year]["champion_version"]
+        if new_arn in sm_to_mlflow:
+            r["new_version"] = sm_to_mlflow[new_arn]
+
     print("Downloading Evidently reports...")
     reports_dir = OUTPUT.parent / "reports"
     reports_dir.mkdir(parents=True, exist_ok=True)
@@ -343,9 +371,15 @@ def main():
             report_links[str(year)] = year_reports
     print(f"  {sum(len(v) for v in report_links.values())} reports downloaded")
 
+    # Strip internal fields and sensitive ARNs before output
+    clean_packages = [{k: v for k, v in m.items() if not k.startswith("_")} for m in packages]
+    for r in recoveries.values():
+        r.pop("frozen_champion_arn", None)
+        r.pop("new_champion_arn", None)
+
     data = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
-        "models": packages,
+        "models": clean_packages,
         "baseline": baseline,
         "monitoring": monitoring,
         "drift": drift,

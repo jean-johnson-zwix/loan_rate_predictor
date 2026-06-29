@@ -4,7 +4,9 @@ AWS-managed MLOps project predicting mortgage `rate_spread` (APR - APOR) on Ariz
 
 Two surfaces: a **synchronous pricing API** (borrower gets a rate estimate) and an **ops CLI** (engineer keeps the estimate accurate as the market moves).
 
-**Live UI:** https://jean-johnson-zwix.github.io/loan_rate_predictor/
+**Pricing UI:** https://jean-johnson-zwix.github.io/loan_rate_predictor/ui/loan-rate-predictor/
+
+**Ops Dashboard:** https://jean-johnson-zwix.github.io/loan_rate_predictor/ui/ops-dashboard/
 
 ## Stack
 
@@ -61,17 +63,17 @@ The pipeline trains a challenger on the new year (with per-vintage winsorize bou
 make ops-report                  # generate ui/ops-dashboard/ops-data.json from AWS artifacts
 ```
 
-Static dashboard (`ui/ops-dashboard/ops.html`) reads from a generated JSON file. Four zones: status, champion timeline, accuracy over time, per-vintage drill-down. Deployed to GitHub Pages.
+Static dashboard (`ui/ops-dashboard/`) reads from a generated JSON file. Four zones: status, champion timeline, accuracy over time (eval slice), and per-year drill-down with Evidently report links. Deployed to GitHub Pages.
 
-## Model metrics (2021 champion)
+## Model metrics
 
-| | RMSE | MAE |
-|---|---|---|
-| XGBoost (28 features, Bayesian AMT) | 0.339 | 0.248 |
-| Mean predictor baseline | 0.537 | 0.389 |
-| Best single-feature linear | 0.519 | 0.376 |
+| Champion | Trained On | Val MAE | Val RMSE | Recovery |
+|----------|-----------|---------|----------|----------|
+| v1 | HMDA 2021 | 0.248 | 0.339 | baseline |
+| v2 | HMDA 2022 | 0.423 | — | +0.086 (17%) |
+| v3 | HMDA 2023 | 0.546 | — | +0.090 (14%) |
 
--36% MAE vs mean baseline. Val set group-split on lender (`lei`).
+Absolute MAE rises across vintages (target std grew 50%: 0.61 -> 0.90). Recovery is gap-closed vs frozen champion on held-out eval slice, not return to baseline. 28 features, Bayesian AMT, group-split on lender (`lei`).
 
 ## Pricing API
 

@@ -1,9 +1,9 @@
 {
-  "generated_at": "2026-06-29 11:18 UTC",
+  "generated_at": "2026-06-29 11:58 UTC",
   "models": [
     {
       "version": 1,
-      "status": "Approved",
+      "status": "Rejected",
       "created": 1782730778,
       "trained_on": "2021",
       "objective": "reg:squarederror",
@@ -12,6 +12,32 @@
       "challenger_rmse": 0.339,
       "train_rows": 668318,
       "val_rows": 167080,
+      "num_features": 28
+    },
+    {
+      "version": 2,
+      "status": "Rejected",
+      "created": 1782732642,
+      "trained_on": "2022",
+      "objective": "reg:squarederror",
+      "group_split_key": "lei",
+      "challenger_mae": 0.4225699950688024,
+      "challenger_rmse": 0.5822170150785239,
+      "train_rows": 152898,
+      "val_rows": 23359,
+      "num_features": 28
+    },
+    {
+      "version": 3,
+      "status": "Approved",
+      "created": 1782734255,
+      "trained_on": "2023",
+      "objective": "reg:squarederror",
+      "group_split_key": "lei",
+      "challenger_mae": 0.5459551138254153,
+      "challenger_rmse": 0.705700562712937,
+      "train_rows": 83597,
+      "val_rows": 16766,
       "num_features": 28
     }
   ],
@@ -27,7 +53,7 @@
   "monitoring": {
     "2021": {
       "year": 2021,
-      "champion_version": 2,
+      "champion_version": 1,
       "dq_violations": [],
       "mq_violations": [],
       "rmse": 0.3091425756518337,
@@ -115,7 +141,7 @@
     },
     "2023": {
       "year": 2023,
-      "champion_version": 3,
+      "champion_version": 2,
       "dq_violations": [
         {
           "feature": "loan_to_value_ratio",
@@ -148,9 +174,9 @@
           "metric": "mae"
         }
       ],
-      "rmse": 0.7317059481511241,
-      "mae": 0.5567161987424677,
-      "r2": 0.21628426331984152
+      "rmse": 0.778151596017751,
+      "mae": 0.5931265791604102,
+      "r2": 0.11363250451803442
     }
   },
   "drift": {
@@ -295,7 +321,28 @@
       "prepayment_penalty_term": 5.488650096166394
     }
   },
-  "recoveries": {},
+  "recoveries": {
+    "2022": {
+      "year": 2022,
+      "eval_rows": 23359,
+      "frozen_eval_mae": 0.5088,
+      "new_eval_mae": 0.4226,
+      "recovery_magnitude": 0.0862,
+      "threshold": 0.25,
+      "frozen_version": 1,
+      "new_version": 2
+    },
+    "2023": {
+      "year": 2023,
+      "eval_rows": 16766,
+      "frozen_eval_mae": 0.6357,
+      "new_eval_mae": 0.546,
+      "recovery_magnitude": 0.0898,
+      "threshold": 0.25,
+      "frozen_version": 2,
+      "new_version": 3
+    }
+  },
   "report_links": {
     "2021": {
       "data_quality": "reports/2021_data_quality.html",
