@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ops Dashboard &middot; Loan Rate Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Fraunces:ital,wght@0,300;0,600;0,700;1,400&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0e0e0e; color: #f0ead6; font-family: 'Outfit', sans-serif; font-weight: 300;
+      min-height: 100vh; display: flex; align-items: flex-start; justify-content: center;
+      padding: 3rem 1.25rem 5rem;
+    }
+    body::before {
+      content: ''; position: fixed; inset: 0; z-index: 50; pointer-events: none; opacity: 0.022;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+    }
+    .wrapper { width: 100%; max-width: 760px; }
+    .nav { font-family: 'DM Mono', monospace; font-size: 0.65rem; color: #66665e; margin-bottom: 2rem; }
+    .nav a { color: #a899e6; text-decoration: none; }
+    .nav a:hover { text-decoration: underline; }
+    .eyebrow {
+      font-family: 'DM Mono', monospace; font-size: 0.65rem; letter-spacing: 0.16em;
+      text-transform: uppercase; color: #f5e642; display: flex; align-items: center;
+      gap: 0.7rem; margin-bottom: 1.1rem;
+    }
+    .eyebrow::before { content: ''; display: inline-block; width: 24px; height: 1px; background: #f5e642; }
+    h1 {
+      font-family: 'Fraunces', Georgia, serif; font-weight: 300;
+      font-size: clamp(2.2rem, 5vw, 3rem); line-height: 1.05; letter-spacing: -0.025em;
+      color: #f0ead6; margin: 0 0 0.6rem;
+    }
+    h1 em { font-style: italic; color: #f5e642; font-weight: 600; }
+    .subtitle { font-size: 0.88rem; color: #c8bfa8; line-height: 1.8; max-width: 580px; margin: 0 0 2.5rem; }
+    .card {
+      background: #141414; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px;
+      padding: 1.6rem 1.8rem; margin-bottom: 1.3rem;
+    }
+    .card-title {
+      font-family: 'DM Mono', monospace; font-size: 0.68rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #a899e6; margin-bottom: 1.1rem;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th {
+      font-family: 'DM Mono', monospace; font-size: 0.58rem; letter-spacing: 0.08em;
+      text-transform: uppercase; color: #807870; text-align: left;
+      padding: 0 0.5rem 0.6rem 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    td {
+      padding: 0.45rem 0.5rem 0.45rem 0; border-bottom: 1px solid rgba(255,255,255,0.03);
+      font-family: 'DM Mono', monospace; font-size: 0.74rem; color: #c8bfa8;
+    }
+    tr.hi td { color: #f0ead6; }
+    .badge {
+      display: inline-block; padding: 0.12rem 0.45rem; border-radius: 4px;
+      font-size: 0.58rem; font-family: 'DM Mono', monospace; letter-spacing: 0.04em; text-transform: uppercase;
+    }
+    .badge.accent { background: rgba(245,230,66,0.15); color: #f5e642; }
+    .badge.pink { background: rgba(240,111,170,0.1); color: #f06faa; }
+    .badge.purple { background: rgba(168,153,230,0.1); color: #a899e6; }
+    .dim { color: #66665e; }
+    .pink-text { color: #f06faa; }
+    .accent-text { color: #f5e642; }
+    code {
+      font-family: 'DM Mono', monospace; font-size: 0.72rem; background: rgba(255,255,255,0.05);
+      padding: 0.12rem 0.35rem; border-radius: 3px;
+    }
+    .metrics-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.8rem; }
+    .metric-box {
+      background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.04);
+      border-radius: 8px; padding: 0.9rem 1rem; text-align: center;
+    }
+    .metric-label {
+      font-family: 'DM Mono', monospace; font-size: 0.58rem; letter-spacing: 0.08em;
+      text-transform: uppercase; color: #807870; margin-bottom: 0.3rem;
+    }
+    .metric-val { font-family: 'Fraunces', Georgia, serif; font-size: 1.5rem; font-weight: 600; color: #f0ead6; }
+    .metric-threshold { font-family: 'DM Mono', monospace; font-size: 0.58rem; color: #66665e; margin-top: 0.25rem; }
+    .monitor-split { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; }
+    .monitor-col-title {
+      font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 0.06em;
+      text-transform: uppercase; color: #807870; margin-bottom: 0.6rem;
+    }
+    .viol-item {
+      font-family: 'DM Mono', monospace; font-size: 0.72rem; color: #c8bfa8;
+      padding: 0.2rem 0; line-height: 1.5;
+    }
+    .viol-feat { color: #f0ead6; }
+    .timeline { padding-left: 1.2rem; border-left: 1px solid rgba(255,255,255,0.08); }
+    .event {
+      position: relative; padding: 0 0 1rem 1.2rem;
+      font-family: 'DM Mono', monospace; font-size: 0.74rem; color: #c8bfa8; line-height: 1.6;
+    }
+    .event:last-child { padding-bottom: 0; }
+    .event-dot {
+      position: absolute; left: -5px; top: 5px; width: 9px; height: 9px;
+      border-radius: 50%; border: 2px solid #141414;
+    }
+    .event-dot.accent { background: #f5e642; }
+    .event-dot.pink { background: #f06faa; }
+    .event-dot.purple { background: #a899e6; }
+    .drift-row { display: flex; align-items: center; gap: 0.6rem; margin-bottom: 0.5rem; }
+    .drift-feat {
+      font-family: 'DM Mono', monospace; font-size: 0.68rem; color: #c8bfa8;
+      width: 22rem; flex-shrink: 0; line-height: 1.5;
+    }
+    .drift-bar-track {
+      flex: 1; height: 1.2rem; background: rgba(255,255,255,0.03); border-radius: 3px;
+      overflow: visible; position: relative;
+    }
+    .drift-threshold-line {
+      position: absolute; top: -2px; bottom: -2px;
+      border-left: 1px dashed rgba(255,255,255,0.2); z-index: 1;
+    }
+    .drift-bar { height: 100%; border-radius: 3px; min-width: 0.5rem; position: relative; }
+    .drift-bar.pink { background: rgba(240,111,170,0.3); }
+    .drift-bar.accent { background: rgba(245,230,66,0.2); }
+    .drift-val { font-family: 'DM Mono', monospace; font-size: 0.68rem; width: 3rem; flex-shrink: 0; text-align: right; }
+    .drift-legend { font-size: 0.62rem; margin-top: 0.7rem; line-height: 1.6; }
+    .recovery-row { display: flex; align-items: center; gap: 0.7rem; margin-bottom: 0.4rem; }
+    .recovery-label {
+      font-family: 'DM Mono', monospace; font-size: 0.6rem; color: #807870;
+      text-transform: uppercase; letter-spacing: 0.04em; width: 12rem; flex-shrink: 0;
+    }
+    .bar-track { flex: 1; height: 1.3rem; background: rgba(255,255,255,0.03); border-radius: 3px; overflow: hidden; }
+    .bar { height: 100%; border-radius: 3px; min-width: 1.5rem; }
+    .bar.pink { background: rgba(240,111,170,0.25); }
+    .bar.accent { background: rgba(245,230,66,0.25); }
+    .recovery-val { font-family: 'DM Mono', monospace; font-size: 0.72rem; width: 4rem; flex-shrink: 0; text-align: right; }
+    .recovery-summary {
+      font-family: 'DM Mono', monospace; font-size: 0.7rem; color: #807870;
+      margin-top: 0.8rem; line-height: 1.7;
+    }
+    .recovery-summary strong { color: #f5e642; font-weight: 500; }
+    .footer {
+      font-family: 'DM Mono', monospace; font-size: 0.6rem; color: #66665e;
+      letter-spacing: 0.06em; margin: 1.5rem 0 0; text-align: center; line-height: 1.8;
+    }
+    .footer a { color: #a899e6; text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+    .footer .dot { color: #f5e642; }
+    /* Status bar */
+    .status-bar {
+      display: flex; align-items: center; gap: 1.2rem;
+      background: #141414; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px;
+      padding: 1.4rem 1.8rem; margin-bottom: 1.3rem;
+    }
+    .status-indicator {
+      width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+      box-shadow: 0 0 12px currentColor;
+    }
+    .status-dot-green { background: #4ade80; color: rgba(74,222,128,0.4); }
+    .status-dot-red { background: #f06faa; color: rgba(240,111,170,0.4); }
+    .status-headline { font-size: 1rem; font-weight: 400; margin-bottom: 0.2rem; }
+    .status-label { font-weight: 500; }
+    .status-detail {
+      font-family: 'DM Mono', monospace; font-size: 0.7rem; color: #807870; line-height: 1.5;
+    }
+
+    /* Timeline track */
+    .timeline-track { display: flex; align-items: flex-start; gap: 0; overflow-x: auto; padding: 0.5rem 0; }
+    .timeline-node { display: flex; flex-direction: column; align-items: center; min-width: 5rem; cursor: pointer; }
+    .timeline-node:hover .tl-dot { transform: scale(1.3); }
+    .tl-dot {
+      width: 14px; height: 14px; border-radius: 50%; border: 2px solid #141414;
+      margin-bottom: 0.6rem; transition: transform 0.15s;
+    }
+    .tl-dot.accent { background: #f5e642; }
+    .tl-dot.dim { background: #555; }
+    .tl-label { text-align: center; }
+    .tl-version { font-family: 'DM Mono', monospace; font-size: 0.78rem; color: #f0ead6; margin-bottom: 0.15rem; }
+    .tl-trained { font-family: 'DM Mono', monospace; font-size: 0.62rem; color: #807870; margin-bottom: 0.15rem; }
+    .tl-mae { font-family: 'DM Mono', monospace; font-size: 0.6rem; color: #c8bfa8; margin-bottom: 0.3rem; }
+    .tl-connector {
+      width: 2.5rem; height: 1px; background: rgba(255,255,255,0.1);
+      align-self: flex-start; margin-top: 7px; flex-shrink: 0;
+    }
+
+    /* Accuracy chart */
+    .chart-legend { display: flex; gap: 1.2rem; margin-bottom: 1rem; }
+    .legend-item {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-family: 'DM Mono', monospace; font-size: 0.6rem; color: #807870;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+    .chart-group { display: flex; align-items: flex-start; gap: 0.8rem; margin-bottom: 0.8rem; }
+    .chart-year {
+      font-family: 'DM Mono', monospace; font-size: 0.75rem; color: #807870;
+      width: 3rem; flex-shrink: 0; padding-top: 0.15rem;
+    }
+    .chart-bars { flex: 1; display: flex; flex-direction: column; gap: 0.3rem; }
+    .chart-bar-row { display: flex; align-items: center; gap: 0.5rem; }
+    .chart-version {
+      font-family: 'DM Mono', monospace; font-size: 0.6rem; width: 2rem; flex-shrink: 0; text-align: center;
+    }
+    .chart-annotation {
+      font-family: 'DM Mono', monospace; font-size: 0.58rem; color: #a899e6;
+      padding-left: 0.2rem;
+    }
+
+    tr.clickable { cursor: pointer; transition: background 0.15s; }
+    tr.clickable:hover { background: rgba(168,153,230,0.06); }
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 100; background: rgba(0,0,0,0.7);
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 4rem 1.25rem; overflow-y: auto;
+      animation: fadeIn 0.15s ease;
+    }
+    .modal {
+      background: #141414; border: 1px solid rgba(255,255,255,0.1); border-radius: 14px;
+      width: 100%; max-width: 640px; animation: slideUp 0.2s ease;
+    }
+    .modal-header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.4rem 1.8rem 0;
+    }
+    .modal-title {
+      font-family: 'Fraunces', Georgia, serif; font-size: 1.4rem; font-weight: 600; color: #f0ead6;
+    }
+    .modal-title .badge { vertical-align: middle; margin-left: 0.5rem; }
+    .modal-close {
+      background: none; border: none; color: #807870; font-size: 1.5rem; cursor: pointer;
+      width: 2rem; height: 2rem; display: flex; align-items: center; justify-content: center;
+      border-radius: 6px; transition: all 0.15s;
+    }
+    .modal-close:hover { background: rgba(255,255,255,0.06); color: #f0ead6; }
+    .modal-body { padding: 1.2rem 1.8rem 1.6rem; }
+    .modal-section { margin-bottom: 1.4rem; }
+    .modal-section:last-child { margin-bottom: 0; }
+    .modal-section-title {
+      font-family: 'DM Mono', monospace; font-size: 0.6rem; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #a899e6; margin-bottom: 0.8rem;
+    }
+    .report-links { display: flex; gap: 0.8rem; flex-wrap: wrap; }
+    .report-link {
+      display: inline-block; padding: 0.5rem 1rem; border-radius: 6px;
+      font-family: 'DM Mono', monospace; font-size: 0.7rem; letter-spacing: 0.04em;
+      background: rgba(168,153,230,0.1); color: #a899e6; text-decoration: none;
+      transition: all 0.15s;
+    }
+    .report-link:hover { background: rgba(168,153,230,0.2); color: #f0ead6; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width: 600px) {
+      .metrics-grid { grid-template-columns: 1fr; }
+      .monitor-split { grid-template-columns: 1fr; }
+      .drift-feat { width: 10rem; }
+      .recovery-label { width: 8rem; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="nav"><a href="../loan-rate-predictor/index.html">&larr; Pricing</a></div>
+  <div class="eyebrow">Arizona HMDA &middot; Ops Dashboard</div>
+
+  <h1>Model <em>Operations</em></h1>
+  <p class="subtitle">The Ops Dashboard: shows model versions, drift reports, and recovery metrics. Generated <span id="generated-at"></span> from S3 artifacts.</p>
+
+  <div id="dashboard"></div>
+
+  <p class="footer">Jean<span class="dot">.</span> &middot; <a href="../loan-rate-predictor/index.html">Loan Rate Predictor</a> &middot; Read-only report from S3 artifacts</p>
+</div>
+<script src="ops.js"></script>
+</body>
+</html>
