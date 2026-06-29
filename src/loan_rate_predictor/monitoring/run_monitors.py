@@ -173,9 +173,7 @@ def run_data_quality_monitor(year: int, role_arn: str, sm_session: sagemaker.Ses
         "output_path": "/opt/ml/processing/output",
         "baseline_constraints": "/opt/ml/processing/baseline/constraints/constraints.json",
         "baseline_statistics": "/opt/ml/processing/baseline/statistics/statistics.json",
-        # ponytail: publish_cloudwatch_metrics omitted — standalone Processing jobs (no schedule)
-        # don't emit to the SageMaker schedule namespace. Violations are read from S3 and
-        # published as custom metrics in LoanRatePredictor/Monitoring instead (_publish_metric below).
+        "publish_cloudwatch_metrics": "Disabled",  # we publish custom metrics via _publish_metric instead
     }
 
     print(f"[A] Data-quality monitor for year {year}")
@@ -210,14 +208,12 @@ def run_data_quality_monitor(year: int, role_arn: str, sm_session: sagemaker.Ses
 
 def run_model_quality_monitor(year: int, role_arn: str, sm_session: sagemaker.Session,
                                wait: bool = True) -> str:
-    """Monitor B: year predictions+labels vs 2021 performance baseline."""
-    # Image URI for B (model-quality) differs from A (data-quality / model-monitor image).
-    # Verify both by inspecting the processing jobs created by your two suggest_baseline() runs:
-    #   aws sagemaker list-processing-jobs --name-contains "model-quality-baseline" --profile ...
-    #   aws sagemaker describe-processing-job --processing-job-name <name> --profile ...
-    #   → AppSpecification.ImageUri is the ground-truth URI for your region + SDK version.
-    # ponytail: version="1.0" may need updating — copy the URI from your baseline job.
-    image_uri = image_uris.retrieve("clarify", config.AWS_REGION, version="1.0")
+    """Monitor B: year predictions+labels vs 2021 performance baseline.
+
+    Same model-monitor-analyzer image as A — the image handles both data-quality
+    and model-quality via the analysis_type env var.
+    """
+    image_uri = image_uris.retrieve("model-monitor", config.AWS_REGION)
     dataset_uri = (
         f"s3://{config.S3_BUCKET}/{config.S3_PREDICTIONS_PREFIX}/{year}/merged/merged.csv"
     )
@@ -235,10 +231,9 @@ def run_model_quality_monitor(year: int, role_arn: str, sm_session: sagemaker.Se
         "baseline_statistics": "/opt/ml/processing/baseline/statistics/statistics.json",
         "analysis_type": "MODEL_QUALITY",
         "problem_type": "Regression",
-        # Column names must match merged.csv headers and the B suggest_baseline() call exactly.
         "inference_attribute": "prediction",
         "ground_truth_attribute": "ground_truth",
-        # ponytail: publish_cloudwatch_metrics omitted — see A env comment above.
+        "publish_cloudwatch_metrics": "Disabled",
     }
 
     print(f"[B] Model-quality monitor for year {year}")
