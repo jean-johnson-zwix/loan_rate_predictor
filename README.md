@@ -61,9 +61,20 @@ The frozen 2021 champion runs forward against new vintages without retraining. W
 
 −36% MAE vs mean baseline · −34% MAE vs best linear · val set group-split on lender (`lei`)
 
+## Pricing API
+
+```bash
+make package-lambda              # build dist/pricing_lambda.zip
+make deploy-champion             # resolve champion from registry → tf-apply (Lambda + API Gateway)
+```
+
+`POST /price` takes a JSON loan payload, applies frozen transforms (DTI ordinal + categorical label encoding), invokes the serverless endpoint, and returns `{ rate_spread, indicative_apr, trained_on }`.
+
+The frontend (`frontend/index.html`) is a single-file form — dark editorial design, no build step, no dependencies.
+
 ## Serving
 
 | Workload | Mode |
 |----------|------|
 | Year scoring (ops) | Batch transform |
-| Single prediction (product) | Serverless endpoint |
+| Single prediction (pricing API) | Lambda → serverless endpoint |
