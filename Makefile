@@ -1,79 +1,104 @@
+.DELETE_ON_ERROR:
+.SUFFIXES:
+
 include .env
 export
 
 PYTHONPATH := src
+PROJECT := loan-rate-predictor
 
-.PHONY: data upload-raw preprocess tf-init tf-plan tf-apply run-preprocessing run-pipeline predict monitor test invoke package-lambda deploy-champion measure-recovery retrain evaluate-retrain ops-report
+.PHONY: all data upload-raw preprocess run-preprocessing \
+        tf-init tf-plan tf-apply \
+        run-pipeline retrain evaluate-retrain \
+        predict monitor measure-recovery \
+        deploy-champion package-lambda invoke \
+        test ops-report help
 
+## Default target
+all: help
+
+## Download AZ HMDA CSVs -> data/raw/
 data:
 	python scripts/download_hmda.py
 
+## Sync data/raw/ -> S3
 upload-raw:
-	aws s3 sync data/raw/ s3://$(STORAGE_BUCKET_NAME)/raw/ --profile $(AWS_PROFILE)
+	aws s3 sync data/raw/ "s3://$(STORAGE_BUCKET_NAME)/raw/" --profile "$(AWS_PROFILE)"
 
+## Preprocess locally (set WINSORIZE_YEAR to override bounds)
 preprocess:
 	python src/loan_rate_predictor/processing/preprocess.py
 
-tf-init:
-	terraform -chdir=infra init
-
-tf-plan:
-	terraform -chdir=infra plan
-
-tf-apply:
-	terraform -chdir=infra apply
-
+## Submit Processing job to SageMaker
 run-preprocessing:
 	python scripts/run_processing_job.py
 
+## Bootstrap Terraform (once)
+tf-init:
+	terraform -chdir=infra init
+
+## Preview infra changes
+tf-plan:
+	terraform -chdir=infra plan
+
+## Apply infra (endpoint, alerts, MLflow server)
+tf-apply:
+	terraform -chdir=infra apply
+
+## Start training pipeline (async). Usage: make run-pipeline DATA_YEAR=2021
 run-pipeline:
-	@echo "Usage: make run-pipeline DATA_YEAR=2021"
-	python scripts/run_pipeline.py --data-year $(DATA_YEAR)
+	python scripts/run_pipeline.py --data-year "$(DATA_YEAR)"
 
+## Start retrain pipeline (async). Usage: make retrain DATA_YEAR=2022
+retrain:
+	python scripts/run_pipeline.py --data-year "$(DATA_YEAR)"
+
+## After pipeline succeeds: promote + deploy + measure recovery. Usage: make evaluate-retrain DATA_YEAR=2022
+evaluate-retrain:
+	python scripts/deploy_champion.py
+	terraform -chdir=infra apply
+	python scripts/measure_recovery.py --year "$(DATA_YEAR)"
+
+## Score a year with frozen champion. Usage: make predict YEAR=2022
 predict:
-	@echo "Usage: make predict YEAR=2022"
-	python scripts/predict_with_champion.py --year $(YEAR)
+	python scripts/predict_with_champion.py --year "$(YEAR)"
 
-# score year with champion, join labels, run Evidently drift + quality reports
+## Score -> join -> Evidently drift + quality reports -> CloudWatch -> SNS. Usage: make monitor YEAR=2022
 monitor:
-	@echo "Usage: make monitor YEAR=2022"
-	python scripts/run_monitoring.py --year $(YEAR)
+	python scripts/run_monitoring.py --year "$(YEAR)"
 
-test:
-	pytest tests/
+## Measure recovery on held-out eval slice. Usage: make measure-recovery YEAR=2022
+measure-recovery:
+	python scripts/measure_recovery.py --year "$(YEAR)"
 
-# promotes latest pending model, updates tfvars, deploys endpoint + Lambda
+## Promote latest pending model, update tfvars, deploy endpoint + Lambda
 deploy-champion:
 	python scripts/deploy_champion.py
 	terraform -chdir=infra apply
 
+## Build dist/pricing_lambda.zip
 package-lambda:
 	bash scripts/package_lambda.sh
 
-measure-recovery:
-	@echo "Usage: make measure-recovery YEAR=2022"
-	python scripts/measure_recovery.py --year $(YEAR)
+## Send sample payload to serverless endpoint
+invoke:
+	aws sagemaker-runtime invoke-endpoint \
+		--endpoint-name "$(PROJECT)-demo" \
+		--content-type text/csv \
+		--body fileb://data/sample_payload.csv \
+		--profile "$(AWS_PROFILE)" \
+		sagemaker_output.json && type sagemaker_output.json
 
-# step 1: start retrain pipeline (async)
-retrain:
-	@echo "Usage: make retrain DATA_YEAR=2022"
-	python scripts/run_pipeline.py --data-year $(DATA_YEAR)
+## Run pytest
+test:
+	pytest tests/
 
-# step 2: after pipeline succeeds — deploy new champion + measure recovery
-evaluate-retrain:
-	@echo "Usage: make evaluate-retrain DATA_YEAR=2022"
-	python scripts/deploy_champion.py
-	terraform -chdir=infra apply
-	python scripts/measure_recovery.py --year $(DATA_YEAR)
-
-# generates ops-dashboard/ops-data.json from Registry + S3 artifacts
+## Generate ops-dashboard/ops-data.json from Registry + S3 artifacts
 ops-report:
 	python scripts/generate_ops_report.py
 
-invoke:
-	aws sagemaker-runtime invoke-endpoint \
-		--endpoint-name loan-rate-predictor-demo \
-		--content-type text/csv \
-		--body fileb://data/sample_payload.csv \
-		--profile $(AWS_PROFILE) \
-		sagemaker_output.json && type sagemaker_output.json
+## Show available targets
+help:
+	@echo "$(PROJECT) - MLOps pipeline for AZ HMDA rate_spread prediction"
+	@echo ""
+	@awk '/^## /{desc=substr($$0,4)} /^[a-zA-Z_-]+:/{if(desc){printf "  %-22s %s\n",$$1,desc; desc=""}}' $(firstword $(MAKEFILE_LIST))
