@@ -75,7 +75,7 @@ resource "aws_apigatewayv2_api" "pricing" {
   protocol_type = "HTTP"
 
   cors_configuration {
-    allow_origins = ["https://${var.github_pages_origin}", "http://localhost:*"]
+    allow_origins = ["https://${var.github_pages_origin}", "http://localhost:5500", "http://127.0.0.1:5500"]
     allow_methods = ["POST", "OPTIONS"]
     allow_headers = ["Content-Type"]
     max_age       = 300
