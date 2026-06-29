@@ -10,3 +10,4 @@ docs/
 *.tfvars
 CLAUDE.md
 .claude
+dist/

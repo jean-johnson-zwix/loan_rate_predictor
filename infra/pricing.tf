@@ -57,7 +57,7 @@ resource "aws_lambda_function" "pricing" {
 
   environment {
     variables = {
-      MODEL_VINTAGE = var.trained_on
+      TRAINED_ON = var.trained_on
     }
   }
 }

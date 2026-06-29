@@ -1,6 +1,6 @@
 """Update infra/terraform.auto.tfvars with the current champion's ARN and trained_on year.
 
-Run this after a pipeline promotion to keep the pricing Lambda's MODEL_VINTAGE and the
+Run this after a pipeline promotion to keep the pricing Lambda's TRAINED_ON and the
 endpoint's model_package_arn in sync. Promotion isn't done until this script has run
 and `make tf-apply` has deployed.
 

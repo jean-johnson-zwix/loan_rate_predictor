@@ -3,7 +3,7 @@ export
 
 PYTHONPATH := src
 
-.PHONY: data upload-raw preprocess tf-init tf-plan tf-apply run-preprocessing run-pipeline make-baseline make-model-quality-baseline predict monitor test invoke
+.PHONY: data upload-raw preprocess tf-init tf-plan tf-apply run-preprocessing run-pipeline make-baseline make-model-quality-baseline predict monitor test invoke package-lambda deploy-champion
 
 data:
 	python scripts/download_hmda.py
@@ -47,6 +47,16 @@ monitor:
 
 test:
 	pytest tests/
+
+# promotes champion to pricing: reads trained_on tag from registry, updates tfvars, applies terraform
+# run after make run-pipeline promotes a new champion
+deploy-champion:
+	python scripts/deploy_champion.py
+	terraform -chdir=infra apply
+
+# requires: data/processed/categorical_encodings.json (make preprocess or make run-preprocessing)
+package-lambda:
+	bash scripts/package_lambda.sh
 
 # requires: endpoint deployed via make tf-apply
 invoke:

@@ -37,7 +37,7 @@ with open(_find_encodings()) as _f:
     ENCODINGS = json.load(_f)
 
 _SM_RUNTIME = boto3.client("sagemaker-runtime", region_name=config.AWS_REGION)
-_MODEL_VINTAGE = os.environ.get("MODEL_VINTAGE", "2021")
+_TRAINED_ON = os.environ.get("TRAINED_ON", "2021")
 
 
 def _to_float(val):
@@ -118,6 +118,6 @@ def handler(event, context):
         "body": json.dumps({
             "rate_spread": round(rate_spread, 4),
             "indicative_apr": round(apor + rate_spread, 4),
-            "model_vintage": _MODEL_VINTAGE,
+            "trained_on": _TRAINED_ON,
         }),
     }
