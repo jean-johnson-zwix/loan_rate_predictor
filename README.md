@@ -4,6 +4,8 @@ AWS-managed MLOps project predicting mortgage `rate_spread` (APR − APOR) on Ar
 
 Two surfaces: a **synchronous pricing API** (borrower gets a rate estimate) and an **ops CLI** (engineer keeps the estimate accurate as the market moves).
 
+**Live UI:** https://jean-johnson-zwix.github.io/loan_rate_predictor/
+
 ## Stack
 
 | Layer | Choice |
