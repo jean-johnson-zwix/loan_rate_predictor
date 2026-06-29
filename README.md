@@ -1,6 +1,8 @@
 # loan_rate_predictor
 
-AWS-managed MLOps project predicting mortgage `rate_spread` (APR − APOR) on Arizona HMDA data (2021–2024).
+AWS-managed MLOps project predicting mortgage `rate_spread` (APR − APOR) on Arizona HMDA data (2021–2024). The managed-AWS counterpart to the [`six-eyes`](https://github.com/jeanj) open-source project.
+
+Two surfaces: a **synchronous pricing API** (borrower gets a rate estimate) and an **ops CLI** (engineer keeps the estimate accurate as the market moves).
 
 ## Stack
 
@@ -9,8 +11,8 @@ AWS-managed MLOps project predicting mortgage `rate_spread` (APR − APOR) on Ar
 | Model | SageMaker built-in XGBoost |
 | Tuning | SageMaker AMT (Bayesian) |
 | Registry | SageMaker Model Registry |
+| Monitoring | Model Monitor (on-trigger Processing jobs) |
 | Infra | Terraform |
-| CI/CD | GitHub Actions → SageMaker |
 
 ## Prerequisites
 
@@ -26,21 +28,28 @@ make data                        # download AZ HMDA CSVs → data/raw/
 make upload-raw                  # sync data/raw/ → S3
 make run-preprocessing           # submit Processing job to SageMaker
 make tf-init                     # bootstrap Terraform (once)
-make tf-apply                    # apply infra (Feature Group, Model Registry, etc.)
+make tf-apply                    # apply infra
 make run-pipeline DATA_YEAR=2021 # bootstrap training run (AMT → evaluate → register)
-make make-baseline               # create Model Monitor data-quality baseline
+make make-baseline               # data-quality baseline
+make make-model-quality-baseline # model-quality baseline (MAE/RMSE thresholds)
 make invoke                      # send sample payload to serverless endpoint
-make test                        # run tests
 ```
 
-## Serving
+## Monitoring
 
-| Workload | Mode |
-|----------|------|
-| Run-forward vintage scoring | Batch transform |
-| Demo single-quote prediction | Serverless endpoint |
+```bash
+make predict YEAR=2022           # score a year with frozen champion
+make monitor YEAR=2022           # full chain: score → join → monitors A+B → CloudWatch → SNS
+```
 
-Invoke via AWS CLI (`make invoke`) or Postman with AWS SigV4 auth.
+The frozen 2021 champion runs forward against new vintages without retraining. When the monitor detects degradation, it fires a CloudWatch alarm with an actionable SNS email.
+
+| Year | Data-quality | Model-quality | MAE |
+|------|-------------|--------------|-----|
+| 2021 (control) | 3 violations | 0 violations | 0.225 |
+| 2022 (earned detection) | 5 violations | 4 violations | 0.414 |
+
+2022 MAE 0.414 = 67% degradation vs baseline 0.248 → both alarms fired.
 
 ## Model metrics (2021 champion)
 
@@ -51,3 +60,10 @@ Invoke via AWS CLI (`make invoke`) or Postman with AWS SigV4 auth.
 | Best single-feature linear | 0.519 | 0.376 |
 
 −36% MAE vs mean baseline · −34% MAE vs best linear · val set group-split on lender (`lei`)
+
+## Serving
+
+| Workload | Mode |
+|----------|------|
+| Year scoring (ops) | Batch transform |
+| Single prediction (product) | Serverless endpoint |
