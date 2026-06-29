@@ -125,12 +125,9 @@ def _build_pipeline(role_arn: str, boto_session,
         },
     )
 
-    _cache = CacheConfig(enable_caching=True, expire_after="PT24H")
-
     step_tuning = TuningStep(
         name="TrainAMT",
         step_args=tuner_args,
-        cache_config=_cache,
         depends_on=[step_prepare],
     )
 
