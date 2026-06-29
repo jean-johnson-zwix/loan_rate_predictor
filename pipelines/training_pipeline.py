@@ -215,31 +215,6 @@ def _build_pipeline(role_arn: str, boto_session,
             "trained_on": param_data_year,
             "objective": config.XGBOOST_OBJECTIVE,
             "group_split_key": config.GROUP_SPLIT_KEY,
-            "challenger_mae": JsonGet(
-                step_name=step_evaluate.name,
-                property_file=evaluation_report,
-                json_path="challenger.mae",
-            ),
-            "challenger_rmse": JsonGet(
-                step_name=step_evaluate.name,
-                property_file=evaluation_report,
-                json_path="challenger.rmse",
-            ),
-            "train_rows": JsonGet(
-                step_name=step_evaluate.name,
-                property_file=evaluation_report,
-                json_path="train_rows",
-            ),
-            "val_rows": JsonGet(
-                step_name=step_evaluate.name,
-                property_file=evaluation_report,
-                json_path="val_rows",
-            ),
-            "num_features": JsonGet(
-                step_name=step_evaluate.name,
-                property_file=evaluation_report,
-                json_path="num_features",
-            ),
         },
     )
 

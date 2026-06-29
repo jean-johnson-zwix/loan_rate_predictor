@@ -28,8 +28,11 @@ DRIFT_THRESHOLD = 0.1
 def _s3_json(s3, key):
     try:
         resp = s3.get_object(Bucket=config.S3_BUCKET, Key=key)
-        return json.loads(resp["Body"].read())
-    except s3.exceptions.NoSuchKey:
+        body = resp["Body"].read()
+        if not body or not body.strip():
+            return None
+        return json.loads(body)
+    except (s3.exceptions.NoSuchKey, json.JSONDecodeError):
         return None
 
 
@@ -173,10 +176,13 @@ def _get_baseline(s3):
 
 
 def _get_monitoring(s3, year):
+    """Read monitoring results from Evidently report.json files."""
     prefix = f"{config.S3_PREDICTIONS_PREFIX}/{year}/monitoring"
 
-    dq_viol = _s3_json(s3, f"{prefix}/data_quality/constraint_violations.json")
-    if dq_viol is None:
+    # Check if any report exists for this year
+    dq_report = _s3_json(s3, f"{prefix}/data_quality/report.json")
+    mq_report = _s3_json(s3, f"{prefix}/model_quality/report.json")
+    if dq_report is None and mq_report is None:
         return None
 
     result = {"year": year}
@@ -186,45 +192,71 @@ def _get_monitoring(s3, year):
     if meta:
         result["champion_version"] = meta.get("champion_version")
 
-    violations = dq_viol.get("violations", [])
-    result["dq_violations"] = [
-        {
-            "feature": v.get("feature_name", v.get("metric_name", "?")),
-            "check": v.get("constraint_check_type", ""),
-        }
-        for v in violations
-    ]
+    # Data drift violations from Evidently report
+    result["dq_violations"] = []
+    if dq_report:
+        for t in dq_report.get("tests", []):
+            if t.get("status") == "FAIL":
+                name = t.get("name", "")
+                col = name.replace("Value Drift for column ", "") if "column" in name else name
+                result["dq_violations"].append({
+                    "feature": col,
+                    "check": "drift",
+                    "description": t.get("description", ""),
+                })
 
-    mq_viol = _s3_json(s3, f"{prefix}/model_quality/constraint_violations.json")
-    mq_list = mq_viol.get("violations", []) if mq_viol else []
-    result["mq_violations"] = [{"metric": v.get("metric_name", "?")} for v in mq_list]
+    # Model quality metrics from Evidently report
+    result["mq_violations"] = []
+    if mq_report:
+        for m in mq_report.get("metrics", []):
+            name = m.get("metric_name", "")
+            val = m.get("value")
+            if "MAE" in name and isinstance(val, dict):
+                result["mae"] = val.get("mean")
+            elif "MAE" in name and isinstance(val, (int, float)):
+                result["mae"] = val
+            elif "RMSE" in name and isinstance(val, (int, float)):
+                result["rmse"] = val
+            elif "R2Score" in name and isinstance(val, (int, float)):
+                result["r2"] = val
 
-    mq_stats = _s3_json(s3, f"{prefix}/model_quality/statistics.json")
-    if mq_stats:
-        reg = mq_stats.get("regression_metrics", {})
-        result["mae"] = reg.get("mae", {}).get("value")
-        result["rmse"] = reg.get("rmse", {}).get("value")
-        result["r2"] = reg.get("r2", {}).get("value")
-        result["item_count"] = mq_stats.get("dataset", {}).get("item_count")
+        # Check if MAE exceeds threshold
+        baseline_mae_threshold = 0.248 * (1 + config.MODEL_QUALITY_DEGRADATION_THRESHOLD)
+        if result.get("mae") and result["mae"] > baseline_mae_threshold:
+            result["mq_violations"].append({"metric": "mae"})
 
     return result
 
 
 def _get_drift_features(s3, year):
-    viol_data = _s3_json(s3, f"{config.S3_PREDICTIONS_PREFIX}/{year}/monitoring/data_quality/constraint_violations.json")
-    if not viol_data:
+    """Extract per-feature drift scores from Evidently data_quality report.json."""
+    report = _s3_json(s3, f"{config.S3_PREDICTIONS_PREFIX}/{year}/monitoring/data_quality/report.json")
+    if not report:
         return []
+
+    # Get drifted features from failed tests (only features that exceeded threshold)
     drifts = []
-    for v in viol_data.get("violations", []):
-        if v.get("constraint_check_type") == "baseline_drift_check":
-            desc = v.get("description", "")
-            distance = None
-            if "distance:" in desc:
-                try:
-                    distance = float(desc.split("distance:")[1].split("exceeds")[0].strip())
-                except (ValueError, IndexError):
-                    pass
-            drifts.append({"feature": v.get("feature_name", "?"), "distance": distance})
+    for t in report.get("tests", []):
+        if t.get("status") != "FAIL" or "column" not in t.get("name", ""):
+            continue
+        name = t.get("name", "")
+        col = name.replace("Value Drift for column ", "") if "column" in name else name
+        desc = t.get("description", "")
+        distance = None
+        if "Drift score is" in desc:
+            try:
+                distance = float(desc.split("Drift score is")[1].split(".")[0:2].__repr__())
+            except (ValueError, IndexError):
+                pass
+        # Fallback: find the matching metric for the exact score
+        if distance is None:
+            for m in report.get("metrics", []):
+                mname = m.get("metric_name", "")
+                if f"column={col}" in mname and isinstance(m.get("value"), (int, float)):
+                    distance = m["value"]
+                    break
+        drifts.append({"feature": col, "distance": distance})
+
     drifts.sort(key=lambda d: d["distance"] or 0, reverse=True)
     return drifts
 
@@ -291,6 +323,26 @@ def main():
     recoveries = _get_recoveries(s3)
     print(f"  {len(recoveries)} recovery files")
 
+    print("Downloading Evidently reports...")
+    reports_dir = OUTPUT.parent / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    report_links = {}
+    for year in config.YEARS:
+        year_reports = {}
+        for report_type in ("data_quality", "model_quality"):
+            key = f"{config.S3_PREDICTIONS_PREFIX}/{year}/monitoring/{report_type}/report.html"
+            local_name = f"{year}_{report_type}.html"
+            local_path = reports_dir / local_name
+            try:
+                s3.download_file(config.S3_BUCKET, key, str(local_path))
+                year_reports[report_type] = f"reports/{local_name}"
+                print(f"  {year}/{report_type} -> {local_path.name}")
+            except s3.exceptions.ClientError:
+                pass
+        if year_reports:
+            report_links[str(year)] = year_reports
+    print(f"  {sum(len(v) for v in report_links.values())} reports downloaded")
+
     data = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         "models": packages,
@@ -299,6 +351,7 @@ def main():
         "drift": drift,
         "feature_means": feature_means,
         "recoveries": recoveries,
+        "report_links": report_links,
         "drift_threshold": DRIFT_THRESHOLD,
     }
 

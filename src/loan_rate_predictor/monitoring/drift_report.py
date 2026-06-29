@@ -114,9 +114,12 @@ def run_model_quality(merged_df, year, s3):
     r2 = float(1 - np.sum((ground_truth - predictions) ** 2) / np.sum((ground_truth - ground_truth.mean()) ** 2))
 
     # Evidently regression report
+    from evidently.core.datasets import Dataset, DataDefinition, Regression
     eval_df = pd.DataFrame({"target": ground_truth, "prediction": predictions})
+    data_def = DataDefinition(regression=[Regression(target="target", prediction="prediction")])
+    ds = Dataset.from_pandas(eval_df, data_definition=data_def)
     report = Report([RegressionPreset()], include_tests=True)
-    snapshot = report.run(eval_df, eval_df)
+    snapshot = report.run(ds, ds)
 
     prefix = f"{config.S3_PREDICTIONS_PREFIX}/{year}/monitoring/model_quality"
 
@@ -125,39 +128,12 @@ def run_model_quality(merged_df, year, s3):
         json_path = Path(tmp) / "report.json"
         snapshot.save_html(str(html_path))
         snapshot.save_json(str(json_path))
-
-        # Also write a simple metrics JSON (backward compat with dashboard)
-        metrics = {"mae": mae, "rmse": rmse, "r2": r2, "item_count": len(merged_df)}
-        metrics_path = Path(tmp) / "statistics.json"
-        metrics_path.write_text(json.dumps({
-            "version": 0.0,
-            "dataset": {"item_count": len(merged_df)},
-            "regression_metrics": {
-                "mae": {"value": mae},
-                "rmse": {"value": rmse},
-                "r2": {"value": r2},
-            },
-        }, indent=2))
-
         s3.upload_file(str(html_path), config.S3_BUCKET, f"{prefix}/report.html")
         s3.upload_file(str(json_path), config.S3_BUCKET, f"{prefix}/report.json")
-        s3.upload_file(str(metrics_path), config.S3_BUCKET, f"{prefix}/statistics.json")
 
     # Check against baseline thresholds
     baseline_mae_threshold = 0.248 * (1 + config.MODEL_QUALITY_DEGRADATION_THRESHOLD)
-    violations = 0
-    if mae > baseline_mae_threshold:
-        violations += 1
-
-    # Write violations file (backward compat)
-    viol_list = []
-    if mae > baseline_mae_threshold:
-        viol_list.append({"metric_name": "mae", "constraint_check_type": "GreaterThanThreshold",
-                          "description": f"MAE {mae:.4f} exceeds threshold {baseline_mae_threshold:.4f}"})
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-        json.dump({"violations": viol_list}, f, indent=2)
-        s3.upload_file(f.name, config.S3_BUCKET, f"{prefix}/constraint_violations.json")
+    violations = 1 if mae > baseline_mae_threshold else 0
 
     # Publish to CloudWatch
     session = _session()
@@ -187,6 +163,45 @@ def log_to_mlflow(year, champion_version, mae, dq_violations, mq_violations):
         print(f"MLflow logging skipped: {e}")
 
 
+def _resolve_reference_year(s3, year, sm):
+    """Get the training year of the champion that scored this year.
+
+    Reads from meta.json (written by run_monitoring.py at monitoring time).
+    Falls back to looking up the champion version in the registry.
+    """
+    # Try meta.json first (records which champion was active when monitoring ran)
+    meta = _s3_json_safe(s3, f"{config.S3_PREDICTIONS_PREFIX}/{year}/monitoring/meta.json")
+    if meta:
+        arn = meta.get("champion_arn")
+        if arn:
+            try:
+                desc = sm.describe_model_package(ModelPackageName=arn)
+                trained_on = desc.get("CustomerMetadataProperties", {}).get("trained_on")
+                if trained_on:
+                    return int(trained_on)
+            except Exception:
+                pass
+
+    # Fallback: current champion's training year
+    from loan_rate_predictor.registry import resolve_champion
+    result = resolve_champion(sm)
+    if result:
+        arn = result[0]
+        desc = sm.describe_model_package(ModelPackageName=arn)
+        trained_on = desc.get("CustomerMetadataProperties", {}).get("trained_on")
+        if trained_on:
+            return int(trained_on)
+    return config.TRAIN_YEAR
+
+
+def _s3_json_safe(s3, key):
+    try:
+        resp = s3.get_object(Bucket=config.S3_BUCKET, Key=key)
+        return json.loads(resp["Body"].read())
+    except Exception:
+        return None
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--year", type=int, required=True, choices=config.YEARS)
@@ -195,10 +210,13 @@ def main():
 
     session = _session()
     s3 = session.client("s3")
+    sm = session.client("sagemaker")
+
+    ref_year = _resolve_reference_year(s3, args.year, sm)
 
     if args.monitor in ("data-drift", "both"):
-        print(f"\nLoading reference (2021) and current ({args.year}) data...")
-        ref_df = _load_year_data(s3, config.TRAIN_YEAR)
+        print(f"\nLoading reference ({ref_year}) and current ({args.year}) data...")
+        ref_df = _load_year_data(s3, ref_year)
         cur_df = _load_year_data(s3, args.year)
         print(f"  Reference: {len(ref_df):,} rows, Current: {len(cur_df):,} rows")
         run_data_drift(ref_df, cur_df, args.year, s3)

@@ -148,12 +148,16 @@ function renderAccuracy(root, data) {
     const mon = data.monitoring[year];
     if (mon.mae == null) return;
     const r = recoveries[year];
+    // Extract version number from ARN like ".../loan-rate-predictor/3"
+    const newVersion = r && r.new_champion_arn ? r.new_champion_arn.split("/").pop() : null;
     points.push({
       year,
       monitoring_mae: mon.mae,
       frozen_mae: r ? r.frozen_eval_mae : null,
       deployed_mae: r ? r.new_eval_mae : mon.mae,
       retrained: !!r,
+      champion_version: mon.champion_version,
+      new_version: newVersion,
     });
   });
 
@@ -185,6 +189,7 @@ function renderAccuracy(root, data) {
 
     // Monitoring MAE bar
     const monRow = el("div", { className: "chart-bar-row" });
+    monRow.appendChild(el("span", { className: "chart-version dim" }, p.champion_version ? `v${p.champion_version}` : ""));
     const monTrack = el("div", { className: "drift-bar-track" });
     if (threshPct) monTrack.appendChild(el("div", { className: "drift-threshold-line", style: { left: threshPct + "%" } }));
     monTrack.appendChild(el("div", { className: `drift-bar ${monCls}`, style: { width: monPct + "%" } }));
@@ -195,6 +200,7 @@ function renderAccuracy(root, data) {
     // Deployed MAE bar (only show if retrained — otherwise same as monitoring)
     if (p.retrained) {
       const deplRow = el("div", { className: "chart-bar-row" });
+      deplRow.appendChild(el("span", { className: "chart-version dim" }, p.new_version ? `v${p.new_version}` : ""));
       const deplTrack = el("div", { className: "drift-bar-track" });
       if (threshPct) deplTrack.appendChild(el("div", { className: "drift-threshold-line", style: { left: threshPct + "%" } }));
       deplTrack.appendChild(el("div", { className: "drift-bar accent", style: { width: deplPct + "%" } }));
@@ -203,7 +209,7 @@ function renderAccuracy(root, data) {
       bars.appendChild(deplRow);
 
       const mag = p.monitoring_mae - p.deployed_mae;
-      const annot = mag < 0.05 ? "\u21b3 retrained (marginal)" : "\u21b3 retrained";
+      const annot = mag < 0.05 ? "\u21b3 retrained" : "\u21b3 retrained";
       bars.appendChild(el("div", { className: "chart-annotation" }, annot));
     }
 
@@ -227,6 +233,7 @@ function renderVintages(root, data) {
   const table = el("table");
   table.appendChild(el("tr", null,
     el("th", null, "Year"),
+    el("th", null, "Model"),
     el("th", null, "Data Drift (A)"),
     el("th", null, "Model Quality (B)"),
     el("th", null, "MAE"),
@@ -239,9 +246,11 @@ function renderVintages(root, data) {
     const hasDrift = mqCount > 0;
     const status = hasDrift ? badge("degraded", "pink") : badge("healthy", "accent");
     const maeCls = data.baseline && m.mae > data.baseline.mae_threshold ? "pink-text" : "accent-text";
+    const modelLabel = m.champion_version ? `v${m.champion_version}` : "\u2014";
 
     const tr = el("tr", { className: "clickable", onclick: () => showVintageDetail(year) },
       el("td", null, year),
+      el("td", null, modelLabel),
       el("td", null, `${dqCount} violation${dqCount !== 1 ? "s" : ""}`),
       el("td", null, `${mqCount} violation${mqCount !== 1 ? "s" : ""}`),
       el("td", { className: maeCls }, fmt(m.mae)),
@@ -249,7 +258,7 @@ function renderVintages(root, data) {
     table.appendChild(tr);
   });
 
-  root.appendChild(card("Monitoring by Vintage", table));
+  root.appendChild(card("Monitoring", table));
 }
 
 // Vintage detail modal
@@ -354,6 +363,22 @@ function showVintageDetail(year) {
       : `Retrained model clawed back ${(r.recovery_magnitude / r.frozen_eval_mae * 100).toFixed(0)}% of degradation.`;
     sec4.appendChild(el("div", { className: "recovery-summary" }, note));
     content.appendChild(sec4);
+  }
+
+  // Evidently report links
+  const reports = data.report_links && data.report_links[year];
+  if (reports) {
+    const sec = el("div", { className: "modal-section" });
+    sec.appendChild(el("div", { className: "modal-section-title" }, "Evidently Reports"));
+    const links = el("div", { className: "report-links" });
+    if (reports.data_quality) {
+      links.appendChild(el("a", { href: reports.data_quality, target: "_blank", className: "report-link" }, "Data Drift Report"));
+    }
+    if (reports.model_quality) {
+      links.appendChild(el("a", { href: reports.model_quality, target: "_blank", className: "report-link" }, "Model Quality Report"));
+    }
+    sec.appendChild(links);
+    content.appendChild(sec);
   }
 
   const mqCount = m.mq_violations ? m.mq_violations.length : 0;

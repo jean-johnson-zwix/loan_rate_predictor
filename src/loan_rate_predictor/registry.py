@@ -76,19 +76,43 @@ def register_in_mlflow(metrics: dict, params: dict, sagemaker_arn: str) -> str |
     mlflow.set_tracking_uri(config.MLFLOW_TRACKING_ARN)
     mlflow.set_experiment(config.MLFLOW_EXPERIMENT_NAME)
 
+    client = MlflowClient()
+
+    # Check if a version for this SageMaker ARN already exists
+    try:
+        existing = client.search_model_versions(f"name='{MODEL_NAME}'")
+        for ev in existing:
+            if (ev.tags or {}).get("sagemaker_arn") == sagemaker_arn:
+                version = ev.version
+                # Update metrics on the existing run
+                if ev.run_id and metrics:
+                    for k, v in metrics.items():
+                        client.log_metric(ev.run_id, k, v)
+                print(f"MLflow version v{version} already exists for {sagemaker_arn}, updated metrics")
+                return str(version)
+    except Exception:
+        pass
+
     with mlflow.start_run(run_name=f"train-{params.get('data_year', '?')}") as run:
         mlflow.log_params(params)
         mlflow.log_metrics(metrics)
         mlflow.set_tag("sagemaker_arn", sagemaker_arn)
 
-        # Register model version (artifact reference, not the actual model file)
-        result = mlflow.register_model(f"runs:/{run.info.run_id}/model", MODEL_NAME)
-        version = result.version
+    # Create model version linked to the run
+    try:
+        client.create_registered_model(MODEL_NAME)
+    except MlflowException:
+        pass  # already exists
 
-        # Tag the version with the SageMaker ARN for resolve_champion
-        client = MlflowClient()
-        client.set_model_version_tag(MODEL_NAME, version, "sagemaker_arn", sagemaker_arn)
-        client.set_model_version_tag(MODEL_NAME, version, "data_year", str(params.get("data_year", "")))
+    mv = client.create_model_version(
+        name=MODEL_NAME,
+        source=f"runs:/{run.info.run_id}",
+        run_id=run.info.run_id,
+    )
+    version = mv.version
+
+    client.set_model_version_tag(MODEL_NAME, version, "sagemaker_arn", sagemaker_arn)
+    client.set_model_version_tag(MODEL_NAME, version, "data_year", str(params.get("data_year", "")))
 
     print(f"Registered in MLflow: {MODEL_NAME} v{version} (sagemaker: {sagemaker_arn})")
     return str(version)
