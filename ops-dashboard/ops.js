@@ -63,7 +63,7 @@ function closeModal() {
 
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
 
-// Zone 1: Status — is the model healthy right now?
+// Zone 1: Status - is the model healthy right now?
 function renderStatus(root, data) {
   const champion = (data.models || []).find(m => m.status === "Approved");
   if (!champion) return;
@@ -93,7 +93,7 @@ function renderStatus(root, data) {
   root.appendChild(section);
 }
 
-// Zone 2: Champion Timeline — how did we get here?
+// Zone 2: Champion Timeline - how did we get here?
 function renderTimeline(root, data) {
   const models = [...(data.models || [])].sort((a, b) => a.version - b.version);
   if (models.length === 0) return;
@@ -131,7 +131,7 @@ function renderTimeline(root, data) {
   root.appendChild(card("Champion Timeline", content));
 }
 
-// Zone 3: Accuracy over time — the money chart
+// Zone 3: Accuracy over time - the money chart
 function renderAccuracy(root, data) {
   const monYears = Object.keys(data.monitoring || {}).sort();
   const recoveries = data.recoveries || {};
@@ -139,8 +139,7 @@ function renderAccuracy(root, data) {
 
   const content = el("div");
 
-  // Build data points — skip the training year (anchor, train-contaminated MAE)
-  const champion = (data.models || []).find(m => m.status === "Approved");
+  // Build data points. Skip the training year because its monitoring MAE is train-contaminated.
   const baselineYear = data.baseline ? "2021" : null;
   const points = [];
   monYears.forEach(year => {
@@ -148,69 +147,73 @@ function renderAccuracy(root, data) {
     const mon = data.monitoring[year];
     if (mon.mae == null) return;
     const r = recoveries[year];
-    // Extract version number from ARN like ".../loan-rate-predictor/3"
+    const frozenVersion = r && r.frozen_champion_arn ? r.frozen_champion_arn.split("/").pop() : null;
     const newVersion = r && r.new_champion_arn ? r.new_champion_arn.split("/").pop() : null;
     points.push({
       year,
       monitoring_mae: mon.mae,
-      frozen_mae: r ? r.frozen_eval_mae : null,
-      deployed_mae: r ? r.new_eval_mae : mon.mae,
+      before_mae: r ? r.frozen_eval_mae : mon.mae,
+      after_mae: r ? r.new_eval_mae : null,
       retrained: !!r,
-      champion_version: mon.champion_version,
+      before_version: frozenVersion || mon.champion_version,
       new_version: newVersion,
+      recovery_magnitude: r ? r.recovery_magnitude : null,
     });
   });
 
   if (points.length === 0) return;
 
-  const maxMae = Math.max(...points.map(p => Math.max(p.monitoring_mae, p.frozen_mae || 0, p.deployed_mae)), 0.5);
+  const maxMae = Math.max(...points.map(p => Math.max(p.before_mae || 0, p.after_mae || 0)), 0.5);
   const threshold = data.baseline ? data.baseline.mae_threshold : null;
   const threshPct = threshold ? Math.min(threshold / maxMae * 100, 100) : null;
 
-  // Legend
   const legend = el("div", { className: "chart-legend" });
   legend.appendChild(el("div", { className: "legend-item" },
     el("div", { className: "legend-swatch", style: { background: "rgba(240,111,170,0.35)" } }),
-    "Monitoring MAE"));
+    "Before retrain"));
   legend.appendChild(el("div", { className: "legend-item" },
     el("div", { className: "legend-swatch", style: { background: "rgba(245,230,66,0.35)" } }),
-    "Deployed (after retrain)"));
+    "After retrain"));
   content.appendChild(legend);
 
   points.forEach(p => {
-    const monPct = Math.min(p.monitoring_mae / maxMae * 100, 100);
-    const deplPct = Math.min(p.deployed_mae / maxMae * 100, 100);
-    const monCls = threshold && p.monitoring_mae > threshold ? "pink" : "accent";
+    const beforePct = Math.min(p.before_mae / maxMae * 100, 100);
+    const beforeCls = threshold && p.before_mae > threshold ? "pink" : "accent";
 
     const group = el("div", { className: "chart-group" });
     group.appendChild(el("span", { className: "chart-year" }, p.year));
 
     const bars = el("div", { className: "chart-bars" });
 
-    // Monitoring MAE bar
-    const monRow = el("div", { className: "chart-bar-row" });
-    monRow.appendChild(el("span", { className: "chart-version dim" }, p.champion_version ? `v${p.champion_version}` : ""));
-    const monTrack = el("div", { className: "drift-bar-track" });
-    if (threshPct) monTrack.appendChild(el("div", { className: "drift-threshold-line", style: { left: threshPct + "%" } }));
-    monTrack.appendChild(el("div", { className: `drift-bar ${monCls}`, style: { width: monPct + "%" } }));
-    monRow.appendChild(monTrack);
-    monRow.appendChild(el("span", { className: `drift-val ${monCls}-text` }, fmt(p.monitoring_mae)));
-    bars.appendChild(monRow);
+    const beforeRow = el("div", { className: "chart-bar-row" });
+    beforeRow.appendChild(el("span", { className: "chart-version dim" }, p.before_version ? `v${p.before_version}` : ""));
+    const beforeTrack = el("div", { className: "drift-bar-track" });
+    if (threshPct) beforeTrack.appendChild(el("div", { className: "drift-threshold-line", style: { left: threshPct + "%" } }));
+    beforeTrack.appendChild(el("div", { className: `drift-bar ${beforeCls}`, style: { width: beforePct + "%" } }));
+    beforeRow.appendChild(beforeTrack);
+    beforeRow.appendChild(el("span", { className: `drift-val ${beforeCls}-text` }, fmt(p.before_mae)));
+    bars.appendChild(beforeRow);
 
-    // Deployed MAE bar (only show if retrained — otherwise same as monitoring)
     if (p.retrained) {
-      const deplRow = el("div", { className: "chart-bar-row" });
-      deplRow.appendChild(el("span", { className: "chart-version dim" }, p.new_version ? `v${p.new_version}` : ""));
-      const deplTrack = el("div", { className: "drift-bar-track" });
-      if (threshPct) deplTrack.appendChild(el("div", { className: "drift-threshold-line", style: { left: threshPct + "%" } }));
-      deplTrack.appendChild(el("div", { className: "drift-bar accent", style: { width: deplPct + "%" } }));
-      deplRow.appendChild(deplTrack);
-      deplRow.appendChild(el("span", { className: "drift-val accent-text" }, fmt(p.deployed_mae)));
-      bars.appendChild(deplRow);
+      const afterPct = Math.min(p.after_mae / maxMae * 100, 100);
+      const afterCls = threshold && p.after_mae > threshold ? "pink" : "accent";
 
-      const mag = p.monitoring_mae - p.deployed_mae;
-      const annot = mag < 0.05 ? "\u21b3 retrained" : "\u21b3 retrained";
+      const afterRow = el("div", { className: "chart-bar-row" });
+      afterRow.appendChild(el("span", { className: "chart-version dim" }, p.new_version ? `v${p.new_version}` : ""));
+      const afterTrack = el("div", { className: "drift-bar-track" });
+      if (threshPct) afterTrack.appendChild(el("div", { className: "drift-threshold-line", style: { left: threshPct + "%" } }));
+      afterTrack.appendChild(el("div", { className: `drift-bar ${afterCls}`, style: { width: afterPct + "%" } }));
+      afterRow.appendChild(afterTrack);
+      afterRow.appendChild(el("span", { className: `drift-val ${afterCls}-text` }, fmt(p.after_mae)));
+      bars.appendChild(afterRow);
+
+      const mag = p.recovery_magnitude || 0;
+      const annot = mag > 0
+        ? `recovery +${fmt(mag, 4)}`
+        : `no recovery ${fmt(mag, 4)}`;
       bars.appendChild(el("div", { className: "chart-annotation" }, annot));
+    } else {
+      bars.appendChild(el("div", { className: "chart-annotation" }, "monitoring MAE only"));
     }
 
     group.appendChild(bars);
@@ -219,13 +222,13 @@ function renderAccuracy(root, data) {
 
   if (threshold) {
     content.appendChild(el("div", { className: "drift-legend dim" },
-      `Dashed line = ${fmt(threshold)} MAE alarm threshold (baseline \u00d7 1.25).`));
+      `Dashed line = ${fmt(threshold)} MAE alarm threshold (baseline x 1.25).`));
   }
 
   root.appendChild(card("Accuracy Over Time", content));
 }
 
-// Zone 4: Per-vintage detail — drill down
+// Zone 4: Per-vintage detail - drill down
 function renderVintages(root, data) {
   const monYears = Object.keys(data.monitoring || {}).sort();
   if (monYears.length === 0) return;
@@ -417,7 +420,7 @@ function showModelDetail(model) {
     content.appendChild(met);
   }
 
-  // Model quality drift — only years where this model was the champion
+  // Model quality drift - only years where this model was the champion
   const monYears = Object.keys(data.monitoring || {}).sort().filter(year => {
     const m = data.monitoring[year];
     return m.champion_version === model.version && m.mae != null;
