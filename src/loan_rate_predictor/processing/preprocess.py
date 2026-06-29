@@ -136,7 +136,7 @@ def make_record_id(df: pd.DataFrame) -> pd.Series:
 def _fs_safe_columns(df: pd.DataFrame) -> pd.DataFrame:
     """Rename columns to satisfy Feature Store naming constraints ([a-zA-Z0-9_]).
 
-    Replaces hyphens with underscores (e.g. derived_msa-md → derived_msa_md).
+    Replaces hyphens with underscores (e.g. derived_msa-md -> derived_msa_md).
 
     Args:
         df: DataFrame with potentially hyphenated column names.
@@ -173,11 +173,12 @@ def main() -> None:
         .astype("int64") // 10**9
     ).astype(float)
 
-    train_mask = df["activity_year"].astype(str) == str(config.TRAIN_YEAR)
+    winsorize_year = int(os.environ.get("WINSORIZE_YEAR", config.TRAIN_YEAR))
+    train_mask = df["activity_year"].astype(str) == str(winsorize_year)
     lo = float(df.loc[train_mask, config.TARGET].quantile(config.WINSORIZE_LOWER))
     hi = float(df.loc[train_mask, config.TARGET].quantile(config.WINSORIZE_UPPER))
     df[config.TARGET] = df[config.TARGET].clip(lower=lo, upper=hi)
-    print(f"Winsorized {config.TARGET} to [{lo:.4f}, {hi:.4f}] (from {config.TRAIN_YEAR} {config.WINSORIZE_LOWER}/{config.WINSORIZE_UPPER} percentiles)")
+    print(f"Winsorized {config.TARGET} to [{lo:.4f}, {hi:.4f}] (from {winsorize_year} {config.WINSORIZE_LOWER}/{config.WINSORIZE_UPPER} percentiles)")
 
     df, encodings = engineer(df)
 
@@ -197,10 +198,10 @@ def main() -> None:
         json.dump(encodings, f, indent=2)
     with open(output_dir / "winsorize_bounds.json", "w") as f:
         json.dump({"target": config.TARGET, "lower": lo, "upper": hi,
-                    "train_year": config.TRAIN_YEAR}, f, indent=2)
+                    "train_year": winsorize_year}, f, indent=2)
 
-    print(f"Wrote {len(out):,} rows → {output_dir}/processed.csv")
-    print(f"Wrote categorical encodings → {output_dir}/categorical_encodings.json")
+    print(f"Wrote {len(out):,} rows -> {output_dir}/processed.csv")
+    print(f"Wrote categorical encodings -> {output_dir}/categorical_encodings.json")
 
 
 if __name__ == "__main__":

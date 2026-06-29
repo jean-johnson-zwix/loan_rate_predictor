@@ -13,7 +13,7 @@ resource "aws_cloudwatch_metric_alarm" "data_quality" {
   alarm_description = "INPUT DRIFT: feature distributions for a scored year shifted vs 2021 baseline. Check predictions/<year>/monitoring/data_quality/constraint_violations.json. Investigate before retraining."
   namespace         = "LoanRatePredictor/Monitoring"
   metric_name       = "DataQualityViolations"
-  # No dimensions block — matches the undimensioned metric published by run_monitors.py.
+  # No dimensions block — matches the undimensioned metric published by drift_report.py.
   # Dimensioned (per-year) metrics are published alongside for dashboards but cannot
   # drive an alarm without knowing the year at Terraform apply time.
   statistic           = "Maximum"

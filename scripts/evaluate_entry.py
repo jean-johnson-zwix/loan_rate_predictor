@@ -59,7 +59,7 @@ def main():
 
     with open(output_dir / "evaluation.json", "w") as f:
         json.dump(result, f, indent=2)
-    print(f"Wrote evaluation.json → {output_dir / 'evaluation.json'}")
+    print(f"Wrote evaluation.json -> {output_dir / 'evaluation.json'}")
 
 
 if __name__ == "__main__":

@@ -95,6 +95,9 @@ def evaluate(val_path: Path, train_path: Path, challenger_tar: Path,
 
     result = {
         "challenger": challenger_metrics,
+        "train_rows": len(X_train),
+        "val_rows": len(X_val),
+        "num_features": X_val.shape[1],
         "baselines": {
             "mean_predictor": mean_bl,
             "best_single_feature_linear": {
@@ -128,5 +131,19 @@ def evaluate(val_path: Path, train_path: Path, challenger_tar: Path,
               f"Mean baseline MAE: {mean_bl['mae']:.4f}  "
               f"Linear baseline MAE: {linear_bl['mae']:.4f}  "
               f"Promote: {promote}")
+
+    # Log to MLflow (no-op if MLFLOW_TRACKING_ARN not set)
+    try:
+        from loan_rate_predictor.tracking import log_training_run
+        log_training_run(
+            data_year=0,  # caller doesn't pass year; pipeline logs it via params
+            metrics=challenger_metrics,
+            params={"train_rows": len(X_train), "val_rows": len(X_val),
+                    "num_features": X_val.shape[1]},
+            champion_metrics=result.get("champion"),
+            promoted=promote,
+        )
+    except Exception as e:
+        print(f"MLflow logging skipped: {e}")
 
     return result

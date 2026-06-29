@@ -1,16 +1,20 @@
-"""Batch process pipeline: score a year, join labels, run both monitors.
+"""Batch monitoring pipeline: score a year, join labels, run drift + quality reports.
   1. Batch transform (score frozen champion on year N)
   2. Join predictions with ground-truth labels
-  3. Run data-quality (A) and model-quality (B) monitors
+  3. Run Evidently drift + model quality reports
 
 Usage:
-    PYTHONPATH=src python scripts/batch_process.py --year 2022
+    PYTHONPATH=src python scripts/run_monitoring.py --year 2022
 """
 import argparse
+import json
 import subprocess
 import sys
 
+import boto3
+
 from loan_rate_predictor import config
+from loan_rate_predictor.registry import resolve_champion
 
 
 def _run(args: list[str]) -> None:
@@ -24,11 +28,21 @@ def _run(args: list[str]) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--year", type=int, required=True, choices=config.YEARS)
-    parser.add_argument("--role-arn", type=str, default=config.SAGEMAKER_ROLE_ARN)
     args = parser.parse_args()
 
     year = str(args.year)
-    role_args = ["--role-arn", args.role_arn] if args.role_arn else []
+
+    # Resolve champion before scoring
+    session = boto3.Session(profile_name=config.AWS_PROFILE, region_name=config.AWS_REGION)
+    sm = session.client("sagemaker")
+    champion = resolve_champion(sm)
+    if not champion:
+        print("No approved champion in registry.")
+        sys.exit(1)
+    champion_arn, _ = champion
+    desc = sm.describe_model_package(ModelPackageName=champion_arn)
+    champion_version = desc.get("ModelPackageVersion")
+    print(f"Champion: v{champion_version} ({champion_arn})")
 
     # 1. Score
     _run(["scripts/predict_with_champion.py", "--year", year])
@@ -36,10 +50,17 @@ def main() -> None:
     # 2. Join predictions with labels
     _run(["-m", "loan_rate_predictor.monitoring.join_predictions_labels", "--year", year])
 
-    # 3. Run both monitors
-    _run(["-m", "loan_rate_predictor.monitoring.run_monitors", "--year", year] + role_args)
+    # 3. Run Evidently reports (data drift + model quality)
+    _run(["-m", "loan_rate_predictor.monitoring.drift_report", "--year", year])
 
-    print(f"\nMonitoring complete for year {year}.")
+    # 4. Write monitoring metadata (which model produced these results)
+    meta = {"year": int(year), "champion_version": champion_version, "champion_arn": champion_arn}
+    meta_key = f"{config.S3_PREDICTIONS_PREFIX}/{year}/monitoring/meta.json"
+    session.client("s3").put_object(
+        Bucket=config.S3_BUCKET, Key=meta_key,
+        Body=json.dumps(meta, indent=2), ContentType="application/json",
+    )
+    print(f"\nMonitoring complete for year {year} (champion v{champion_version}).")
     print("Check CloudWatch alarms and email for alerts.")
 
 

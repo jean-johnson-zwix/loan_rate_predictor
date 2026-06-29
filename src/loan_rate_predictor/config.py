@@ -212,6 +212,9 @@ MODEL_QUALITY_DEGRADATION_THRESHOLD = PERF_MATERIAL_RELATIVE  # MAE violation if
 # Source: FFIEC APOR tables. 360=30yr fixed, 180=15yr fixed.
 APOR_BY_TERM: dict[int, float] = {360: 6.50, 180: 5.90}
 
+MLFLOW_TRACKING_ARN = os.getenv("MLFLOW_TRACKING_ARN", "")
+MLFLOW_EXPERIMENT_NAME = "loan-rate-predictor"
+
 AMT_HYPERPARAMETER_RANGES = {
     "num_round": {"min": 50, "max": 500, "type": "Integer"},
     "max_depth": {"min": 3, "max": 10, "type": "Integer"},

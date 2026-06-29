@@ -1,8 +1,8 @@
 """Score a year with the frozen champion via SageMaker batch transform.
 
 Prepares two S3 artifacts per year:
-  - features-only CSV (no header) → batch transform input → predictions
-  - features+target CSV (with headers) → data-quality monitor input (matches baseline schema)
+  - features-only CSV (no header) -> batch transform input -> predictions
+  - features+target CSV (with headers) -> data-quality monitor input (matches baseline schema)
 
 Column order/count assertion guards against schema mismatch masquerading as drift.
 
@@ -61,14 +61,14 @@ def _prepare_year_data(s3_client, year: int, tmp_dir: Path) -> tuple[pd.DataFram
     scoring_key = f"{config.S3_PREDICTIONS_PREFIX}/{year}/input/scoring_input.csv"
     s3_client.upload_file(str(scoring_path), config.S3_BUCKET, scoring_key)
     scoring_uri = f"s3://{config.S3_BUCKET}/{scoring_key}"
-    print(f"  Scoring input → {scoring_uri}")
+    print(f"  Scoring input -> {scoring_uri}")
 
     # Row-ID sidecar: record_id in same row order as scoring_input.csv
     ids_path = tmp_dir / "scoring_ids.csv"
     df[[config.RECORD_ID]].to_csv(ids_path, index=False)
     ids_key = f"{config.S3_PREDICTIONS_PREFIX}/{year}/input/scoring_ids.csv"
     s3_client.upload_file(str(ids_path), config.S3_BUCKET, ids_key)
-    print(f"  Row IDs → s3://{config.S3_BUCKET}/{ids_key}")
+    print(f"  Row IDs -> s3://{config.S3_BUCKET}/{ids_key}")
 
     # Monitor input: target + features with headers (matches data-quality baseline schema)
     monitor_path = tmp_dir / "monitor_input.csv"
@@ -77,7 +77,7 @@ def _prepare_year_data(s3_client, year: int, tmp_dir: Path) -> tuple[pd.DataFram
     monitor_key = f"{config.S3_PREDICTIONS_PREFIX}/{year}/monitor/features.csv"
     s3_client.upload_file(str(monitor_path), config.S3_BUCKET, monitor_key)
     monitor_uri = f"s3://{config.S3_BUCKET}/{monitor_key}"
-    print(f"  Monitor input → {monitor_uri}")
+    print(f"  Monitor input -> {monitor_uri}")
 
     return df, scoring_uri, monitor_uri
 

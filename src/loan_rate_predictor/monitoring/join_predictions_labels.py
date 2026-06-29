@@ -72,7 +72,7 @@ def join(year: int) -> None:
 
         if len(merged) != len(ids):
             raise ValueError(
-                f"Join lost rows: {len(ids)} predictions → {len(merged)} matched. "
+                f"Join lost rows: {len(ids)} predictions -> {len(merged)} matched. "
                 f"Check for duplicate or missing record_ids in year {year}."
             )
 
@@ -97,7 +97,7 @@ def join(year: int) -> None:
         merged_key = f"{config.S3_PREDICTIONS_PREFIX}/{year}/merged/merged.csv"
         s3.upload_file(str(merged_path), config.S3_BUCKET, merged_key)
         print(f"Year {year}: {len(merged):,} rows joined")
-        print(f"  → s3://{config.S3_BUCKET}/{merged_key}")
+        print(f"  -> s3://{config.S3_BUCKET}/{merged_key}")
 
 
 def main() -> None:

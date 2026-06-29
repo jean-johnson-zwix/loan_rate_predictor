@@ -14,7 +14,7 @@ def download(year: int) -> None:
     if dest.exists():
         print(f"{year}: already exists, skipping")
         return
-    print(f"{year}: downloading → {dest}")
+    print(f"{year}: downloading -> {dest}")
     with urllib.request.urlopen(url) as resp, open(dest, "wb") as f:
         while chunk := resp.read(1 << 20):  # 1 MB chunks
             f.write(chunk)

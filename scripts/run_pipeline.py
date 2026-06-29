@@ -73,6 +73,8 @@ def main() -> None:
     print(f"Pipeline execution started: {execution.arn}")
     print(f"  DataYear: {args.data_year}")
     print(f"  Champion: {champion_uri or '(bootstrap)'}")
+    print(f"\nPipeline runs async. When it succeeds:")
+    print(f"  make evaluate-retrain DATA_YEAR={args.data_year}")
 
 
 if __name__ == "__main__":

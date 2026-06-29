@@ -3,7 +3,7 @@ export
 
 PYTHONPATH := src
 
-.PHONY: data upload-raw preprocess tf-init tf-plan tf-apply run-preprocessing run-pipeline make-baseline make-model-quality-baseline predict monitor test invoke package-lambda deploy-champion
+.PHONY: data upload-raw preprocess tf-init tf-plan tf-apply run-preprocessing run-pipeline predict monitor test invoke package-lambda deploy-champion measure-recovery retrain evaluate-retrain ops-report
 
 data:
 	python scripts/download_hmda.py
@@ -26,21 +26,15 @@ tf-apply:
 run-preprocessing:
 	python scripts/run_processing_job.py
 
-# requires: make tf-apply (Model Package Group must exist before pipeline registers a model)
 run-pipeline:
 	@echo "Usage: make run-pipeline DATA_YEAR=2021"
 	python scripts/run_pipeline.py --data-year $(DATA_YEAR)
-
-make-baseline:
-	python -m loan_rate_predictor.monitoring.make_baseline
-
-make-model-quality-baseline:
-	python -m loan_rate_predictor.monitoring.make_model_quality_baseline
 
 predict:
 	@echo "Usage: make predict YEAR=2022"
 	python scripts/predict_with_champion.py --year $(YEAR)
 
+# score year with champion, join labels, run Evidently drift + quality reports
 monitor:
 	@echo "Usage: make monitor YEAR=2022"
 	python scripts/run_monitoring.py --year $(YEAR)
@@ -48,17 +42,34 @@ monitor:
 test:
 	pytest tests/
 
-# promotes champion to pricing: reads trained_on tag from registry, updates tfvars, applies terraform
-# run after make run-pipeline promotes a new champion
+# promotes latest pending model, updates tfvars, deploys endpoint + Lambda
 deploy-champion:
 	python scripts/deploy_champion.py
 	terraform -chdir=infra apply
 
-# requires: data/processed/categorical_encodings.json (make preprocess or make run-preprocessing)
 package-lambda:
 	bash scripts/package_lambda.sh
 
-# requires: endpoint deployed via make tf-apply
+measure-recovery:
+	@echo "Usage: make measure-recovery YEAR=2022"
+	python scripts/measure_recovery.py --year $(YEAR)
+
+# step 1: start retrain pipeline (async)
+retrain:
+	@echo "Usage: make retrain DATA_YEAR=2022"
+	python scripts/run_pipeline.py --data-year $(DATA_YEAR)
+
+# step 2: after pipeline succeeds — deploy new champion + measure recovery
+evaluate-retrain:
+	@echo "Usage: make evaluate-retrain DATA_YEAR=2022"
+	python scripts/deploy_champion.py
+	terraform -chdir=infra apply
+	python scripts/measure_recovery.py --year $(DATA_YEAR)
+
+# generates ops-dashboard/ops-data.json from Registry + S3 artifacts
+ops-report:
+	python scripts/generate_ops_report.py
+
 invoke:
 	aws sagemaker-runtime invoke-endpoint \
 		--endpoint-name loan-rate-predictor-demo \
