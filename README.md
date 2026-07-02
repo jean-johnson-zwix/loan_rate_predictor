@@ -21,6 +21,8 @@ Two surfaces: a **synchronous pricing API** (borrower gets a rate estimate) and 
 | Alerting | CloudWatch alarms + SNS |
 | Infra | Terraform |
 
+![System Architecture](media/system_architecture.png)
+
 ## Prerequisites
 
 - Python 3.11+
@@ -50,6 +52,8 @@ make run-preprocessing               # submit Processing job to SageMaker
 
 ### Training
 
+![Training Pipeline](media/training_pipeline.png)
+
 ```bash
 make run-pipeline DATA_YEAR=2021     # start SageMaker Pipeline (async)
 ```
@@ -65,6 +69,8 @@ make monitor YEAR=2022               # score -> join -> Evidently reports -> Clo
 Scores the full year with the current champion via batch transform, joins predictions with ground-truth labels, then runs Evidently `DataDriftPreset` (feature distributions vs champion's training year) and `RegressionPreset` (MAE/RMSE/R2). Publishes custom CloudWatch metrics; alarms fire SNS email if MAE exceeds baseline x 1.25.
 
 ### Retraining
+
+![Detection and Recovery Loop](media/detection_recovery_loop.png)
 
 ```bash
 make retrain DATA_YEAR=2023          # start pipeline (async)
