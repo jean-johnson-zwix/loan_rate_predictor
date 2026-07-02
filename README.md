@@ -8,6 +8,7 @@ Two surfaces: a **synchronous pricing API** (borrower gets a rate estimate) and 
 
 **Ops Dashboard:** https://jean-johnson-zwix.github.io/loan_rate_predictor/ops-dashboard/
 
+
 ## Stack
 
 | Layer | Choice |
@@ -27,27 +28,43 @@ Two surfaces: a **synchronous pricing API** (borrower gets a rate estimate) and 
 - AWS CLI with profile `loan-rate-predictor-local-developer`
 - `.env` file with `STORAGE_BUCKET_NAME`, `SAGEMAKER_ROLE_ARN`, and `MLFLOW_TRACKING_ARN`
 
-## Quick start
+## Command Reference
+
+### Setup
 
 ```bash
-make data                        # download AZ HMDA CSVs -> data/raw/
-make upload-raw                  # sync data/raw/ -> S3
-make run-preprocessing           # submit Processing job to SageMaker
-make tf-init                     # bootstrap Terraform (once)
-make tf-apply                    # apply infra (endpoint, alerts, MLflow server)
-make run-pipeline DATA_YEAR=2021 # bootstrap training run (AMT -> evaluate -> register)
-make invoke                      # send sample payload to serverless endpoint
+make data                            # download AZ HMDA CSVs -> data/raw/
+make upload-raw                      # sync data/raw/ -> S3
+make tf-init                         # bootstrap Terraform (once)
+make tf-apply                        # deploy infra (endpoint, alerts, MLflow server)
 ```
 
-## Monitoring
+### Data Processing
 
 ```bash
-make monitor YEAR=2022           # score -> join -> Evidently drift + quality reports -> CloudWatch -> SNS
+make preprocess                      # run locally (set WINSORIZE_YEAR for per-vintage bounds)
+make run-preprocessing               # submit Processing job to SageMaker
 ```
 
-The frozen champion runs forward against new vintages. Evidently generates per-feature drift reports (HTML + JSON) and model quality metrics. When degradation exceeds thresholds, CloudWatch alarms fire with actionable SNS emails.
+`preprocess` loads all years from `data/raw/`, applies filters, coerces types, engineers features (DTI ordinal + categorical encoding), winsorizes `rate_spread` at the specified year's 1st/99th percentile, and writes `processed.csv` + `categorical_encodings.json`.
 
-## Retraining
+### Training
+
+```bash
+make run-pipeline DATA_YEAR=2021     # start SageMaker Pipeline (async)
+```
+
+Pipeline: `Prepare` (GroupShuffleSplit on `lei`) -> `TrainAMT` (20 Bayesian trials, XGBoost) -> `Evaluate` (challenger vs champion on val set) -> `Register` (if challenger wins). Model registered as `PendingManualApproval`.
+
+### Monitoring
+
+```bash
+make monitor YEAR=2022               # score -> join -> Evidently reports -> CloudWatch -> SNS
+```
+
+Scores the full year with the current champion via batch transform, joins predictions with ground-truth labels, then runs Evidently `DataDriftPreset` (feature distributions vs champion's training year) and `RegressionPreset` (MAE/RMSE/R2). Publishes custom CloudWatch metrics; alarms fire SNS email if MAE exceeds baseline x 1.25.
+
+### Retraining
 
 ```bash
 make retrain DATA_YEAR=2023          # start pipeline (async)
@@ -55,38 +72,39 @@ make retrain DATA_YEAR=2023          # start pipeline (async)
 make evaluate-retrain DATA_YEAR=2023 # promote -> deploy -> measure recovery
 ```
 
-The pipeline trains a challenger on the new year (with per-vintage winsorize bounds), evaluates against the frozen champion, and registers if the challenger wins. `evaluate-retrain` promotes, deploys to the endpoint, and measures recovery on the held-out eval slice.
+`retrain` starts the pipeline for a new year. `evaluate-retrain` runs post-pipeline: reads evaluation metrics from the pipeline output, registers the model in MLflow, sets the `champion` alias, updates `terraform.auto.tfvars`, deploys the endpoint, and measures recovery on the held-out eval slice (same `split_group_aware` split the pipeline trained with).
 
-## Ops Dashboard
+### Pricing API
 
 ```bash
-make ops-report                  # generate ui/ops-dashboard/ops-data.json from AWS artifacts
+make package-lambda                  # build dist/pricing_lambda.zip
+make deploy-champion                 # promote -> update tfvars -> tf-apply
+make invoke                          # send sample payload to endpoint
 ```
 
-Static dashboard (`ui/ops-dashboard/`) reads from a generated JSON file. Four zones: status, champion timeline, accuracy over time (eval slice), and per-year drill-down with Evidently report links. Deployed to GitHub Pages.
+`POST /price` takes a JSON borrower profile, applies frozen transforms (DTI ordinal + categorical label encoding, 28-column contract assertion), invokes the serverless endpoint, adds APOR back for an indicative APR, and returns `{ rate_spread, indicative_apr, trained_on }`.
 
-## Model metrics
+### Ops Dashboard
+
+```bash
+make ops-report                      # generate ui/ops-dashboard/ops-data.json + download Evidently reports
+```
+
+Reads model versions from MLflow, monitoring metrics from Evidently `report.json`, and recovery data from `recovery/{year}.json` on S3. Downloads Evidently HTML reports to `ui/ops-dashboard/reports/`. Outputs `ops-data.json` consumed by the static dashboard.
+
+## Model Metrics
 
 | Champion | Trained On | Val MAE | Val RMSE | Recovery |
 |----------|-----------|---------|----------|----------|
 | v1 | HMDA 2021 | 0.248 | 0.339 | baseline |
-| v2 | HMDA 2022 | 0.423 | — | +0.086 (17%) |
-| v3 | HMDA 2023 | 0.546 | — | +0.090 (14%) |
+| v2 | HMDA 2022 | 0.423 | -- | +0.086 (17%) |
+| v3 | HMDA 2023 | 0.546 | -- | +0.090 (14%) |
 
 Absolute MAE rises across vintages (target std grew 50%: 0.61 -> 0.90). Recovery is gap-closed vs frozen champion on held-out eval slice, not return to baseline. 28 features, Bayesian AMT, group-split on lender (`lei`).
-
-## Pricing API
-
-```bash
-make package-lambda              # build dist/pricing_lambda.zip
-make deploy-champion             # promote -> update tfvars -> tf-apply (Lambda + API Gateway)
-```
-
-`POST /price` takes a JSON loan payload, applies frozen transforms, invokes the serverless endpoint, and returns `{ rate_spread, indicative_apr, trained_on }`.
 
 ## Serving
 
 | Workload | Mode |
 |----------|------|
 | Year scoring (ops) | Batch transform |
-| Single prediction (pricing API) | Lambda -> serverless endpoint |
+| Single prediction (pricing) | Lambda -> serverless endpoint |

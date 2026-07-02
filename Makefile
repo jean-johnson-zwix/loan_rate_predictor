@@ -8,7 +8,7 @@ PYTHONPATH := src
 PROJECT := loan-rate-predictor
 
 .PHONY: all data upload-raw preprocess run-preprocessing \
-        tf-init tf-plan tf-apply \
+        tf-init tf-plan tf-apply tf-destroy purge-model-packages \
         run-pipeline retrain evaluate-retrain \
         predict monitor measure-recovery \
         deploy-champion package-lambda invoke \
@@ -44,6 +44,14 @@ tf-plan:
 ## Apply infra (endpoint, alerts, MLflow server)
 tf-apply:
 	terraform -chdir=infra apply
+
+## Delete all model packages from the registry (required before tf-destroy)
+purge-model-packages:
+	python -c "import boto3,os; sm=boto3.Session(profile_name=os.environ['AWS_PROFILE']).client('sagemaker'); pkgs=sm.list_model_packages(ModelPackageGroupName='$(PROJECT)')['ModelPackageSummaryList']; [sm.delete_model_package(ModelPackageName=p['ModelPackageArn']) or print('deleted', p['ModelPackageArn']) for p in pkgs]"
+
+## Destroy all Terraform-managed AWS resources (stops billing)
+tf-destroy: purge-model-packages
+	terraform -chdir=infra destroy
 
 ## Start training pipeline (async). Usage: make run-pipeline DATA_YEAR=2021
 run-pipeline:
